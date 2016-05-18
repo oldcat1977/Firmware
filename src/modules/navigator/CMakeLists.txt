@@ -39,22 +39,25 @@ px4_add_module(
 	STACK_MAIN 1300
 	COMPILE_FLAGS
 	SRCS
+		datalinkloss.cpp
+		enginefailure.cpp
+		follow_target.cpp
+		geofence.cpp
+		gpsfailure.cpp
+		land.cpp
+		loiter.cpp
+		mission.cpp
+		mission_block.cpp
+		mission_feasibility_checker.cpp
 		navigator_main.cpp
 		navigator_mode.cpp
-		mission_block.cpp
-		mission.cpp
-		loiter.cpp
-		rtl.cpp
-		takeoff.cpp
-		land.cpp
 		precland.cpp
-		mission_feasibility_checker.cpp
-		geofence.cpp
-		datalinkloss.cpp
 		rcloss.cpp
-		enginefailure.cpp
-		gpsfailure.cpp
-		follow_target.cpp
+		rcrecover.cpp
+		rtl.cpp
+		smart_rtl.cpp
+		takeoff.cpp
+		tracker.cpp
 	DEPENDS
 		platforms__common
 	)

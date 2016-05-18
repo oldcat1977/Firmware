@@ -114,3 +114,20 @@ PARAM_DEFINE_FLOAT(RTL_MIN_DIST, 5.0f);
  * @group Return To Land
  */
 PARAM_DEFINE_INT32(RTL_LAND_TYPE, 0);
+
+/**
+ * RTL Advanced to RTL classic fallback delay
+ *
+ * If the vehicle makes no progress in advanced RTL for this timespan for whatever reason, the system falls back to basic RTL mode.
+ * Note that there may be long straight lines in the return path. This delay should be large enough to allow flying along such lines.
+ * If set to -1 the system will not switch to basic RTL but loiter.
+ *
+ * @unit s
+ * @min -1
+ * @max 300
+ * @decimal 1
+ * @increment 0.5
+ * @group Return To Land
+ */
+PARAM_DEFINE_FLOAT(RTL_FALLBCK_DLY, 120f);
+

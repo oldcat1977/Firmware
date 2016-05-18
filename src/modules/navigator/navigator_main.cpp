@@ -93,6 +93,8 @@ Navigator::Navigator() :
 	_land(this, "LND"),
 	_precland(this, "PLD"),
 	_rtl(this, "RTL"),
+	_smartRtl(this, "SMART_RTL"),
+	_rcRecover(this, "RCRECOVER"),
 	_rcLoss(this, "RCL"),
 	_dataLinkLoss(this, "DLL"),
 	_engineFailure(this, "EF"),
@@ -125,6 +127,8 @@ Navigator::Navigator() :
 	_navigation_mode_array[8] = &_land;
 	_navigation_mode_array[9] = &_precland;
 	_navigation_mode_array[10] = &_follow_target;
+	_navigation_mode_array[11] = &_smartRtl;
+	_navigation_mode_array[12] = &_rcRecover;
 
 }
 
@@ -163,6 +167,17 @@ void
 Navigator::local_position_update()
 {
 	orb_copy(ORB_ID(vehicle_local_position), _local_pos_sub, &_local_pos);
+
+	if (!_land_detected.landed) {
+		if (_tracker.get_graph_fault()) {
+			_tracker.reset_graph();
+		}
+
+		_tracker.update(&_local_pos);
+
+	} else {
+		_use_advanced_rtl = true; // Try advanced RTL again for the next flight
+	}
 }
 
 void
@@ -185,6 +200,7 @@ Navigator::home_position_update(bool force)
 
 	if (updated || force) {
 		orb_copy(ORB_ID(home_position), _home_pos_sub, &_home_pos);
+		_tracker.set_home(&_home_pos);
 	}
 }
 
@@ -212,6 +228,14 @@ void
 Navigator::vehicle_land_detected_update()
 {
 	orb_copy(ORB_ID(vehicle_land_detected), _land_detected_sub, &_land_detected);
+
+	if (!_land_detected.landed) {
+		if (_tracker.get_graph_fault()) {
+			_tracker.reset_graph();
+		}
+
+		_tracker.update(&_local_pos);
+	}
 }
 
 void
@@ -660,7 +684,7 @@ Navigator::task_main()
 				navigation_mode_new = &_mission;
 
 			} else {
-				navigation_mode_new = &_rtl;
+				_navigation_mode = _use_advanced_rtl ? (NavigatorMode *)&_smartRtl : (NavigatorMode *)&_rtl;
 			}
 
 			break;
@@ -807,6 +831,10 @@ Navigator::status()
 {
 	_geofence.printStatus();
 
+
+	_tracker.dump_recent_path();
+	_tracker.dump_graph();
+	//_tracker.dump_path_to_home();
 }
 
 void
@@ -1129,6 +1157,27 @@ int navigator_main(int argc, char *argv[])
 
 	} else if (!strcmp(argv[1], "status")) {
 		navigator::g_navigator->status();
+
+	} else if (!strcmp(argv[1], "tracker") && argc >= 3) {
+		if (!strcmp(argv[2], "reset")) {
+			// Deletes the entire flight graph (but not the most recent path!).
+			// This may be neccessary if the environment changed heavily since system start.
+			navigator::g_navigator->tracker_reset();
+
+		} else if (!strcmp(argv[2], "consolidate")) {
+			// Consolidates the flight graph.
+			// This is not required for normal operation, as it happens automatically.
+			navigator::g_navigator->tracker_consolidate();
+
+		} else if (!strcmp(argv[2], "rewrite")) {
+			// Deletes everything from the flight graph, which does not lead home.
+			// This is not required for normal operation, as it happens automatically.
+			navigator::g_navigator->tracker_rewrite();
+
+		} else {
+			usage();
+			return 1;
+		}
 
 	} else if (!strcmp(argv[1], "fencefile")) {
 		navigator::g_navigator->load_fence_from_file(GEOFENCE_FILENAME);

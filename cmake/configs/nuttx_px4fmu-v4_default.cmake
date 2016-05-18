@@ -77,6 +77,7 @@ set(config_module_list
 	lib/controllib/controllib_test
 	modules/mavlink/mavlink_tests
 	modules/mc_pos_control/mc_pos_control_tests
+	modules/navigator/navigator_tests
 	modules/uORB/uORB_tests
 	systemcmds/tests
 
