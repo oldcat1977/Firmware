@@ -19,8 +19,7 @@ class SmartRTL : public MissionBlock
 {
 public:
 	SmartRTL(Navigator *navigator, const char *name);
-
-	~SmartRTL();
+	~SmartRTL() = default;
 
 	void on_inactive();
 	void on_activation();

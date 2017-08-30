@@ -169,7 +169,7 @@ private:
 
 	// Controls the maximum distance from home where the graph is retained at maximum precision.
 	// Everything at distance 2^(HIGH_PRECISION_RANGE/2+1) or closer falls into this regime.
-	// Note that even within this range, precision will be reduced if neccessary.
+	// Note that even within this range, precision will be reduced if necessary.
 	static constexpr int HIGH_PRECISION_RANGE = 10; // corresponds to 64m
 
 	// The size of the cache used by the graph rewrite algorithm.
@@ -232,7 +232,7 @@ unsigned int distance :
 	struct fpos_t {
 		float x, y, z;
 
-		inline fpos_t operator*(const float scalar) const
+		fpos_t operator*(const float scalar) const
 		{
 			return {
 				.x = this->x * scalar,
@@ -241,7 +241,7 @@ unsigned int distance :
 			};
 		}
 
-		inline fpos_t operator-(const fpos_t &pos2) const
+		fpos_t operator-(const fpos_t &pos2) const
 		{
 			return {
 				.x = this->x - pos2.x,
@@ -254,12 +254,12 @@ unsigned int distance :
 	struct ipos_t {
 		int x, y, z;
 
-		inline bool operator==(const ipos_t &pos2) const
+		bool operator==(const ipos_t &pos2) const
 		{
 			return this->x == pos2.x && this->y == pos2.y && this->z == pos2.z;
 		}
 
-		inline ipos_t operator+(const ipos_t &pos2) const
+		ipos_t operator+(const ipos_t &pos2) const
 		{
 			return {
 				.x = this->x + pos2.x,
@@ -268,7 +268,7 @@ unsigned int distance :
 			};
 		}
 
-		inline ipos_t operator-(const ipos_t &pos2) const
+		ipos_t operator-(const ipos_t &pos2) const
 		{
 			return {
 				.x = this->x - pos2.x,
@@ -277,7 +277,7 @@ unsigned int distance :
 			};
 		}
 
-		inline ipos_t operator+=(const ipos_t &pos2)
+		ipos_t operator+=(const ipos_t &pos2)
 		{
 			this->x += pos2.x;
 			this->y += pos2.y;
@@ -285,7 +285,7 @@ unsigned int distance :
 			return *this;
 		}
 
-		inline ipos_t operator-=(const ipos_t &pos2)
+		ipos_t operator-=(const ipos_t &pos2)
 		{
 			this->x -= pos2.x;
 			this->y -= pos2.y;
@@ -293,7 +293,7 @@ unsigned int distance :
 			return *this;
 		}
 
-		inline ipos_t operator-() const
+		ipos_t operator-() const
 		{
 			return {
 				.x = -this->x,
@@ -305,15 +305,14 @@ unsigned int distance :
 
 
 	/*** utility functions ***/
-
-	static inline int round(float f) { return (int)(f + (f < 0 ? -0.5f : 0.5f)); };
-	static inline fpos_t to_fpos(ipos_t pos) { return { .x = (float)pos.x * GRID_SIZE, .y = (float)pos.y * GRID_SIZE, .z = (float)pos.z * GRID_SIZE }; }
-	static inline ipos_t to_ipos(fpos_t pos) { return { .x = round(pos.x / GRID_SIZE), .y = round(pos.y / GRID_SIZE), .z = round(pos.z / GRID_SIZE) }; }
+	static int round(float f) { return (int)(f + (f < 0 ? -0.5f : 0.5f)); };
+	static fpos_t to_fpos(ipos_t pos) { return { .x = (float)pos.x * GRID_SIZE, .y = (float)pos.y * GRID_SIZE, .z = (float)pos.z * GRID_SIZE }; }
+	static ipos_t to_ipos(fpos_t pos) { return { .x = round(pos.x / GRID_SIZE), .y = round(pos.y / GRID_SIZE), .z = round(pos.z / GRID_SIZE) }; }
 
 	// Calculates the square root of an integer, based on a look-up table.
 	// If the range of the look-up table is exceeded, the following action is taken:
 	//  fallback_to_infinity: true: INFINITY is returned, false: the usual sqrt function is called
-	static float fast_sqrt(int val, bool fallback_to_infinity);
+	static float fast_sqrt(uint16_t val, bool fallback_to_infinity);
 
 	// Calculates the scalar product of two vectors. If any of the input vectors is very long (> ~16'000), this returns INT_MAX to prevent overflow.
 	static int dot(ipos_t vec1, ipos_t vec2);
@@ -353,7 +352,7 @@ unsigned int distance :
 	//  out: set to one index after the delta that was stored
 	// max_space: The maximum number of slots that may be used.
 	// Returns: true if the delta was pushed, false if the space was insufficient. If max_space >= FAR_DELTA_SIZE, the function always succeeds.
-	static bool push_delta(size_t &index, ipos_t delta, bool is_jump, size_t max_space, delta_item_t *buffer);
+	static bool push_delta(size_t &index, ipos_t delta, bool is_jump, ssize_t max_space, delta_item_t *buffer);
 	inline bool push_delta(size_t &index, ipos_t delta, bool is_jump, size_t max_space = FAR_DELTA_SIZE) { return push_delta(index, delta, is_jump, max_space, graph); };
 
 	// Fetches a delta item from the specified index.
@@ -443,7 +442,7 @@ unsigned int distance :
 	void consolidate_graph(const char *reason);
 
 	// Makes sure that the meaning of the specified index does not change unless the graph version is incremented.
-	inline size_t pin_index(size_t index) { pinned_index = index > pinned_index ? index : pinned_index; return index; }
+	size_t pin_index(size_t index) { pinned_index = index > pinned_index ? index : pinned_index; return index; }
 
 	// Measures the direct distance between two positions on the graph.
 	// Returns infinity if the positions are separated by a jump.
@@ -465,7 +464,7 @@ unsigned int distance :
 	//  index, coef:
 	//      in: the position at which the nodes should be examined
 	//      out: the position that leads home
-	//  delta: if not NULL, set to the position difference between the input and output positions
+	//  delta: if not nullptr, set to the position difference between the input and output positions
 	//  go_forward: set to the best direction to home from the new line (valid iif the position was at a node, i.e. if the result is finite)
 	float apply_node_delta(size_t &index, unsigned int &coef, ipos_t *delta, bool &go_forward);
 

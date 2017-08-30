@@ -7,18 +7,20 @@
  * @author Samuel Sadok <samuel.sadok@bluewin.ch>
  */
 
-#include <limits.h>     // CHAR_BIT
-#include <lib/mathlib/math/Limits.hpp>  // std::min, max
-#include <cstdlib>      // std::abs
-#include <cmath>        // std::abs
-#include <float.h>
-#include <geo/geo.h>
-#include <systemlib/perf_counter.h>
 #include "tracker.h"
 
+#include <limits.h>     // CHAR_BIT
+#include <cstdlib>      // std::abs
+#include <cmath>        // std::abs
+#include <cfloat>
+#include <stdio.h>
+#include <string.h>
+
+#include <lib/mathlib/math/Limits.hpp>  // std::min, max
+#include <geo/geo.h>
+#include <systemlib/perf_counter.h>
 
 using namespace std;
-
 
 template<class T> void myswap(T &a, T &b)
 {
@@ -28,7 +30,7 @@ template<class T> void myswap(T &a, T &b)
 }
 
 
-float Tracker::fast_sqrt(int val, bool fallback_to_infinity)
+float Tracker::fast_sqrt(uint16_t val, bool fallback_to_infinity)
 {
 	const float values[] = {
 		0.000000000000000f, 1.000000000000000f, 1.414213562373095f, 1.732050807568877f,
@@ -49,7 +51,7 @@ float Tracker::fast_sqrt(int val, bool fallback_to_infinity)
 		return INFINITY;
 	}
 
-	float result = sqrt(val);
+	float result = sqrtf(val);
 	return result;
 }
 
@@ -217,14 +219,16 @@ Tracker::ipos_t Tracker::get_line_to_line_delta(ipos_t delta1, ipos_t end1, ipos
 }
 
 
-inline Tracker::delta_item_t Tracker::pack_compact_delta_item(ipos_t delta)
+Tracker::delta_item_t Tracker::pack_compact_delta_item(ipos_t delta)
 {
 	return ((delta.x & 0x1F) << 10) | ((delta.y & 0x1F) << 5) | ((delta.z & 0x1F) << 0);
 }
 
-inline Tracker::ipos_t Tracker::unpack_compact_delta_item(delta_item_t delta)
+
+Tracker::ipos_t Tracker::unpack_compact_delta_item(delta_item_t delta)
 {
-	const int SHIFT_COUNT = CHAR_BIT * sizeof(int) - 5;
+	static constexpr int SHIFT_COUNT = CHAR_BIT * sizeof(int) - 5;
+
 	return {
 		.x = ((int)(delta << (SHIFT_COUNT - 10))) >> SHIFT_COUNT,
 		.y = ((int)(delta << (SHIFT_COUNT - 5))) >> SHIFT_COUNT,
@@ -232,7 +236,8 @@ inline Tracker::ipos_t Tracker::unpack_compact_delta_item(delta_item_t delta)
 	};
 }
 
-inline bool Tracker::fits_into_far_delta(ipos_t vec)
+
+bool Tracker::fits_into_far_delta(ipos_t vec)
 {
 	return (((vec.x >> 14) == 0) || ((vec.x >> 14) == -1)) &&
 	       (((vec.y >> 14) == 0) || ((vec.y >> 14) == -1)) &&
@@ -240,7 +245,7 @@ inline bool Tracker::fits_into_far_delta(ipos_t vec)
 }
 
 
-bool Tracker::push_delta(size_t &index, ipos_t delta, bool jump, size_t max_space, delta_item_t *buffer)
+bool Tracker::push_delta(size_t &index, ipos_t delta, bool jump, ssize_t max_space, delta_item_t *buffer)
 {
 	int max_val = math::max(math::max(delta.x, delta.y), delta.z);
 	int min_val = math::min(math::min(delta.x, delta.y), delta.z);
@@ -336,6 +341,7 @@ int Tracker::get_granularity_at(ipos_t pos)
 	return margin * margin;
 }
 
+
 void Tracker::set_home(float x, float y, float z)
 {
 	home_position = to_ipos({ .x = x, .y = y, .z = z });
@@ -364,6 +370,7 @@ void Tracker::set_home(float x, float y, float z)
 		    (double)coef_to_float(nodes->coef1), (double)x, (double)y, (double)z);
 }
 
+
 void Tracker::update(vehicle_local_position_s *position)
 {
 	if (_ref_timestamp == 0 && position->ref_timestamp != 0) {
@@ -380,6 +387,7 @@ void Tracker::update(vehicle_local_position_s *position)
 		update(position->x, position->y, position->z);
 	}
 }
+
 
 void Tracker::update(float x, float y, float z)
 {
@@ -401,6 +409,7 @@ void Tracker::update(float x, float y, float z)
 		set_home(x, y, z);
 	}
 }
+
 
 void Tracker::push_recent_path(fpos_t &position)
 {
@@ -431,10 +440,11 @@ void Tracker::push_recent_path(fpos_t &position)
 		} while ((index != recent_path_next_read) && !rollback);
 
 		// If the preceding item would be a bumper, we shouldn't roll back to this invalid position
-		if (rollback && index != recent_path_next_read)
+		if (rollback && index != recent_path_next_read) {
 			if ((recent_path[(index ? index : RECENT_PATH_LENGTH) - 1] >> 15) & 1) {
 				rollback = false;
 			}
+		}
 	}
 
 
@@ -548,7 +558,7 @@ void Tracker::push_graph(fpos_t &position)
 
 		PX4_WARN("flight graph reached limit at memory pressure %d - flight graph will be optimized", memory_pressure);
 
-		compress_perf_t *perf = memory_pressure > MAX_PERF_MEASUREMENTS ? NULL : &(perf_measurements[memory_pressure - 1] = {
+		compress_perf_t *perf = memory_pressure > MAX_PERF_MEASUREMENTS ? nullptr : &(perf_measurements[memory_pressure - 1] = {
 			.runtime = 0,
 			.deltas_before = graph_next_write,
 			.nodes_before = node_count
@@ -614,6 +624,7 @@ Tracker::ipos_t Tracker::walk_forward(size_t &index, bool &is_jump)
 	}
 }
 
+
 Tracker::ipos_t Tracker::walk_backward(size_t &index, bool &is_jump)
 {
 	ipos_t delta = fetch_delta(index, is_jump);
@@ -639,15 +650,17 @@ bool Tracker::push_node(node_t &node, int granularity)
 
 	// Check if there is already a nearby node that connects roughly the same lines
 	for (size_t i = node_count - 1; i > 0; i--) {
-		if (check_similarity(node.index1, node.coef1, node_at(i).index1, node_at(i).coef1, half_accuracy))
+		if (check_similarity(node.index1, node.coef1, node_at(i).index1, node_at(i).coef1, half_accuracy)) {
 			if (check_similarity(node.index2, node.coef2, node_at(i).index2, node_at(i).coef2, half_accuracy)) {
 				return false;
 			}
+		}
 
-		if (check_similarity(node.index1, node.coef1, node_at(i).index2, node_at(i).coef2, half_accuracy))
+		if (check_similarity(node.index1, node.coef1, node_at(i).index2, node_at(i).coef2, half_accuracy)) {
 			if (check_similarity(node.index2, node.coef2, node_at(i).index1, node_at(i).coef1, half_accuracy)) {
 				return false;
 			}
+		}
 	}
 
 	node_at(node_count++) = node;
@@ -705,10 +718,11 @@ bool Tracker::check_similarity(size_t index1, int coef1, size_t index2, int coef
 		return false;
 	}
 
-	if (index1 == index2_predecessor)
+	if (index1 == index2_predecessor) {
 		if (delta_length * (1 - fcoef2) + predecessor_delta_length * fcoef1 <= max_distance) {
 			return true;
 		}
+	}
 
 	return false;
 }
@@ -1132,8 +1146,9 @@ float Tracker::apply_node_delta(size_t &index, unsigned int &coef, ipos_t *delta
 	size_t best_index = index;
 	int best_coef = coef;
 
-	if (delta)
+	if (delta) {
 		*delta = { .x = 0, .y = 0, .z = 0 };
+	}
 
 	// Consider all intersections at the specified position and use the one with the smallest distance home.
 	for (size_t i = 0; i < node_count; i++) {
@@ -1156,9 +1171,10 @@ float Tracker::apply_node_delta(size_t &index, unsigned int &coef, ipos_t *delta
 
 				if (delta) {
 					// If we don't change lines, the delta is 0
-					if (index == (node_at(i).use_line2 ? node_at(i).index2 : node_at(i).index1))
+					if (index == (node_at(i).use_line2 ? node_at(i).index2 : node_at(i).index1)) {
 						*delta = { .x = 0, .y = 0, .z = 0 };
-					else if (node_at(i).use_line2) {
+
+					} else if (node_at(i).use_line2) {
 						*delta = unpack_compact_delta_item(node_at(i).delta);
 
 					} else {
@@ -1179,8 +1195,8 @@ float Tracker::get_node_distance(size_t index, unsigned int coef, int &direction
 {
 	size_t old_index = index;
 	unsigned int old_coef = coef;
-	bool go_forward;
-	float distance = apply_node_delta(index, coef, NULL, go_forward);
+	bool go_forward = false;
+	float distance = apply_node_delta(index, coef, nullptr, go_forward);
 	direction = (index == old_index && coef == old_coef && !isinf(distance)) ? go_forward ? 1 : -1 : 0;
 	return distance;
 }
@@ -1214,6 +1230,7 @@ bool Tracker::set_node_distance(size_t index, int coef, float distance, bool go_
 
 	return improvement;
 }
+
 
 void Tracker::refresh_distances()
 {
@@ -1354,7 +1371,7 @@ bool Tracker::calc_return_path(path_finding_context_t &context, bool &progress)
 		}
 
 		// If we're at a node (which doesn't have to be the case), this will switch to the line that gives the best path home.
-		bool go_forward;
+		bool go_forward = false;
 		float dist_through_node = apply_node_delta(context.current_index, context.current_coef, &delta, go_forward);
 
 		// If we're at a node, we must proceed in the recommended direction, otherwise we risk going in the
@@ -1779,6 +1796,7 @@ bool Tracker::init_return_path(path_finding_context_t &context, float &x, float 
 	return true;
 }
 
+
 bool Tracker::init_return_path_global(path_finding_context_t &context, double &lat, double &lon, float &alt)
 {
 	float x, y, z;
@@ -1787,6 +1805,7 @@ bool Tracker::init_return_path_global(path_finding_context_t &context, double &l
 	alt = _ref_alt - z;
 	return result;
 }
+
 
 bool Tracker::advance_return_path(path_finding_context_t &context, float &x, float &y, float &z)
 {
@@ -1816,6 +1835,7 @@ bool Tracker::advance_return_path(path_finding_context_t &context, float &x, flo
 	return result;
 }
 
+
 bool Tracker::advance_return_path_global(path_finding_context_t &context, double &lat, double &lon, float &alt)
 {
 	float x, y, z;
@@ -1824,6 +1844,7 @@ bool Tracker::advance_return_path_global(path_finding_context_t &context, double
 	alt = _ref_alt - z;
 	return result;
 }
+
 
 bool Tracker::is_context_close_to_head(path_finding_context_t &context)
 {
@@ -1835,11 +1856,13 @@ bool Tracker::is_context_close_to_head(path_finding_context_t &context)
 	return dot(delta) <= get_granularity_at(context.current_pos);
 }
 
+
 bool Tracker::is_context_close_to_home(path_finding_context_t &context)
 {
 	ipos_t delta = context.current_pos - home_on_graph;
 	return dot(delta) <= get_granularity_at(context.current_pos);
 }
+
 
 bool Tracker::is_same_pos(path_finding_context_t &context1, path_finding_context_t &context2)
 {
@@ -1913,6 +1936,7 @@ void Tracker::dump_graph()
 	dump_nodes();
 }
 
+
 void Tracker::dump_nodes()
 {
 	PX4_INFO("nodes (%zu elements of size %zu bytes)%s:", node_count, (sizeof(node_t) * CHAR_BIT) / 8,
@@ -1930,6 +1954,7 @@ void Tracker::dump_nodes()
 			 i ? "" : " <= home");
 	}
 }
+
 
 void Tracker::dump_path_to_home()
 {

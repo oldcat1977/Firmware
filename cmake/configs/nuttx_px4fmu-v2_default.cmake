@@ -84,6 +84,7 @@ set(config_module_list
 	#modules/commander/commander_tests
 	#modules/mavlink/mavlink_tests
 	#modules/mc_pos_control/mc_pos_control_tests
+	#modules/navigator/navigator_tests
 	#modules/uORB/uORB_tests
 	#systemcmds/tests
 

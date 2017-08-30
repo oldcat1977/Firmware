@@ -54,9 +54,14 @@ void RCRecover::on_activation()
 
 	/* reset starting point so we override what the triplet contained from the previous navigation state */
 	_start_lock = false;
-	set_current_position_item(&_mission_item);
-	struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
-	mission_item_to_position_setpoint(&_mission_item, &pos_sp_triplet->current);
+
+	_mission_item.lat = _navigator->get_global_position()->lat;
+	_mission_item.lon = _navigator->get_global_position()->lon;
+	_mission_item.altitude = _navigator->get_global_position()->alt;
+	_mission_item.altitude_is_relative = false;
+
+	position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
+	mission_item_to_position_setpoint(_mission_item, &pos_sp_triplet->current);
 
 	if (_state == STATE_NONE) {
 		// for safety reasons don't go into RCRecover if landed
@@ -98,7 +103,7 @@ void RCRecover::update_mission_item()
 	updateParams();
 
 	if (!_start_lock) {
-		set_previous_pos_setpoint();
+		_navigator->get_position_setpoint_triplet()->previous = _navigator->get_position_setpoint_triplet()->current;
 	}
 
 	_navigator->set_can_loiter_at_sp(false);
@@ -166,7 +171,7 @@ void RCRecover::update_mission_item()
 	reset_mission_item_reached();
 
 	/* convert mission item to current position setpoint and make it valid */
-	mission_item_to_position_setpoint(&_mission_item, &pos_sp_triplet->current);
+	mission_item_to_position_setpoint(_mission_item, &pos_sp_triplet->current);
 	pos_sp_triplet->next.valid = false;
 
 	_navigator->set_position_setpoint_triplet_updated();

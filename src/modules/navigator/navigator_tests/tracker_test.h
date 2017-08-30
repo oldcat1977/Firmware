@@ -12,4 +12,4 @@
 #define TRACKER_TEST_LONG_PATHS
 #endif
 
-bool trackerTest(void);
+bool trackerTest();

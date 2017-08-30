@@ -74,12 +74,13 @@ set(config_module_list
 	# Testing
 	#
 	drivers/distance_sensor/sf0x/sf0x_tests
-### NOT Portable YET 	drivers/test_ppm
+	#drivers/test_ppm ### NOT Portable YET
+	lib/controllib/controllib_test
 	#lib/rc/rc_tests
 	modules/commander/commander_tests
-	lib/controllib/controllib_test
 	modules/mavlink/mavlink_tests
 	modules/mc_pos_control/mc_pos_control_tests
+	modules/navigator/navigator_tests
 	modules/uORB/uORB_tests
 	systemcmds/tests
 

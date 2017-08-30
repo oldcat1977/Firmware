@@ -74,10 +74,10 @@ DEFINE_TEST(longPath2)
 class TrackerTest : public UnitTest
 {
 public:
-	TrackerTest();
-	virtual ~TrackerTest();
+	TrackerTest() = default;
+	virtual ~TrackerTest() = default;
 
-	bool run_tests(void);
+	bool run_tests();
 
 private:
 
@@ -186,18 +186,9 @@ TrackerTest::line_test_t TrackerTest::line_test_cases[] = {
 };
 
 
-TrackerTest::TrackerTest()
-{
-}
-
-TrackerTest::~TrackerTest()
-{
-}
-
-
 float TrackerTest::get_distance(float x1, float y1, float z1, float x2, float y2, float z2)
 {
-	return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2));
+	return sqrtf((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2) + (z1 - z2) * (z1 - z2));
 }
 
 
@@ -217,7 +208,8 @@ float TrackerTest::distance_to_line(float x, float y, float z, const test_t *tes
 	float cross_y = base_z * span_x - base_x * span_z;
 	float cross_z = base_x * span_y - base_y * span_x;
 
-	return sqrt(cross_x * cross_x + cross_y * cross_y + cross_z * cross_z) / sqrt(base_x * base_x + base_y * base_y + base_z
+	return sqrtf(cross_x * cross_x + cross_y * cross_y + cross_z * cross_z) / sqrtf(base_x * base_x + base_y * base_y +
+			base_z
 			* base_z);
 }
 
@@ -385,7 +377,7 @@ bool TrackerTest::try_return_unsupervised(Tracker &tracker, const test_t *test, 
 }
 
 
-bool TrackerTest::fly_and_return_test(void)
+bool TrackerTest::fly_and_return_test()
 {
 	for (size_t t = 0; t < sizeof(test_cases) / sizeof(test_cases[0]); t++) {
 		const test_t *test = test_cases + t;
@@ -431,7 +423,7 @@ bool TrackerTest::fly_and_return_test(void)
 }
 
 
-bool TrackerTest::fly_and_leave_return_path_test(void)
+bool TrackerTest::fly_and_leave_return_path_test()
 {
 	for (size_t t = 0; t < sizeof(test_cases) / sizeof(test_cases[0]); t++) {
 		const test_t *test = test_cases + t;
@@ -485,7 +477,7 @@ bool TrackerTest::fly_and_leave_return_path_test(void)
 }
 
 
-bool TrackerTest::fly_and_change_home_test(void)
+bool TrackerTest::fly_and_change_home_test()
 {
 	for (size_t t = 0; t < sizeof(test_cases) / sizeof(test_cases[0]); t++) {
 		const test_t *test = test_cases + t;
@@ -525,7 +517,7 @@ bool TrackerTest::fly_and_change_home_test(void)
 }
 
 
-bool TrackerTest::performance_test(void)
+bool TrackerTest::performance_test()
 {
 	for (size_t t = 0; t < sizeof(test_cases) / sizeof(test_cases[0]); t++) {
 		const test_t *test = test_cases + t;
@@ -538,8 +530,6 @@ bool TrackerTest::performance_test(void)
 		for (size_t p = 0; p < test->path_size; p += 3) {
 			_tracker.update(test->path[p], test->path[p + 1], test->path[p + 2]);
 		}
-
-
 
 		char number[128] = { 0 };
 		char msg1[256] = { 0 };
@@ -617,7 +607,7 @@ bool TrackerTest::line_to_line_test()
 }
 
 
-bool TrackerTest::run_tests(void)
+bool TrackerTest::run_tests()
 {
 	ut_run_test(line_to_line_test);
 

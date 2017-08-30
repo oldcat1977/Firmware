@@ -330,21 +330,23 @@ private:
 	bool		_pos_sp_triplet_updated{false};		/**< flags if position SP triplet needs to be published */
 	bool 		_pos_sp_triplet_published_invalid_once{false};	/**< flags if position SP triplet has been published once to UORB */
 	bool		_mission_result_updated{false};		/**< flags if mission result has seen an update */
+	bool		_use_advanced_rtl{true};		/**< use graph-based RTL instead of direct RTL **/
 
 	NavigatorMode	*_navigation_mode{nullptr};	/**< abstract pointer to current navigation mode class */
-	Mission		_mission;			/**< class that handles the missions */
-	Loiter		_loiter;			/**< class that handles loiter */
-	Takeoff		_takeoff;			/**< class for handling takeoff commands */
-	Land		_land;				/**< class for handling land commands */
-	PrecLand	_precland;			/**< class for handling precision land commands */
-	RTL 		_rtl;				/**< class that handles RTL */
-	RCRecover	_rcRecover;			/**< class that handles RC recovery */
-	RCLoss 		_rcLoss;			/**< class that handles RTL according to OBC rules (rc loss mode) */
-	SmartRTL	_smartRtl;			/**< class that handles return-to-land along recorded flight graph */
+
 	DataLinkLoss	_dataLinkLoss;			/**< class that handles the OBC datalink loss mode */
 	EngineFailure	_engineFailure;			/**< class that handles the engine failure mode (FW only!) */
-	GpsFailure	_gpsFailure;			/**< class that handles the OBC gpsfailure loss mode */
 	FollowTarget	_follow_target;
+	GpsFailure	_gpsFailure;			/**< class that handles the OBC gpsfailure loss mode */
+	Land		_land;				/**< class for handling land commands */
+	Loiter		_loiter;			/**< class that handles loiter */
+	Mission		_mission;			/**< class that handles the missions */
+	PrecLand	_precland;			/**< class for handling precision land commands */
+	RCLoss 		_rcLoss;			/**< class that handles RTL according to OBC rules (rc loss mode) */
+	RCRecover	_rcRecover;			/**< class that handles RC recovery */
+	RTL 		_rtl;				/**< class that handles RTL */
+	SmartRTL	_smartRtl;			/**< class that handles return-to-land along recorded flight graph */
+	Takeoff		_takeoff;			/**< class for handling takeoff commands */
 
 	NavigatorMode *_navigation_mode_array[NAVIGATOR_MODE_ARRAY_SIZE];	/**< array of navigation modes */
 

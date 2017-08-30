@@ -64,15 +64,16 @@ set(config_module_list
 	systemcmds/motor_ramp
 
 	#
-	# Tests
+	# Testing
 	#
 	drivers/distance_sensor/sf0x/sf0x_tests
 	drivers/test_ppm
-	modules/commander/commander_tests
-	modules/navigator/navigator_tests
-	modules/mc_pos_control/mc_pos_control_tests
 	lib/controllib/controllib_test
+	#lib/rc/rc_tests
+	modules/commander/commander_tests
 	modules/mavlink/mavlink_tests
+	modules/mc_pos_control/mc_pos_control_tests
+	modules/navigator/navigator_tests
 	modules/uORB/uORB_tests
 	systemcmds/tests
 
