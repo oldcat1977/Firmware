@@ -173,7 +173,7 @@ static calibrate_return gyro_calibration_worker(int cancel_sub, void* data)
 			}
 
 			if (update_count % (calibration_count / 20) == 0) {
-				calibration_log_info(worker_data->mavlink_log_pub, CAL_QGC_PROGRESS_MSG, (update_count * 100) / calibration_count);
+				mavlink_log_info(worker_data->mavlink_log_pub, CAL_QGC_PROGRESS_MSG, (update_count * 100) / calibration_count);
 			}
 
 			// Propagate out the slowest sensor's count
@@ -186,14 +186,14 @@ static calibrate_return gyro_calibration_worker(int cancel_sub, void* data)
 		}
 
 		if (poll_errcount > 1000) {
-			calibration_log_critical(worker_data->mavlink_log_pub, CAL_ERROR_SENSOR_MSG);
+			mavlink_log_critical(worker_data->mavlink_log_pub, CAL_ERROR_SENSOR_MSG);
 			return calibrate_return_error;
 		}
 	}
 
 	for (unsigned s = 0; s < max_gyros; s++) {
 		if (worker_data->device_id[s] != 0 && calibration_counter[s] < calibration_count / 2) {
-			calibration_log_critical(worker_data->mavlink_log_pub, "ERROR: missing data, sensor %d", s)
+			mavlink_log_critical(worker_data->mavlink_log_pub, "ERROR: missing data, sensor %d", s)
 			return calibrate_return_error;
 		}
 
@@ -210,7 +210,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 	int			res = PX4_OK;
 	gyro_worker_data_t	worker_data = {};
 
-	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, sensor_name);
+	mavlink_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, sensor_name);
 
 	worker_data.mavlink_log_pub = mavlink_log_pub;
 
@@ -237,7 +237,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 		(void)sprintf(str, "CAL_GYRO%u_ID", s);
 		res = param_set_no_notification(param_find(str), &(worker_data.device_id[s]));
 		if (res != PX4_OK) {
-			calibration_log_critical(mavlink_log_pub, "Unable to reset CAL_GYRO%u_ID", s);
+			mavlink_log_critical(mavlink_log_pub, "Unable to reset CAL_GYRO%u_ID", s);
 			return PX4_ERROR;
 		}
 
@@ -252,7 +252,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 			px4_close(fd);
 
 			if (res != PX4_OK) {
-				calibration_log_critical(mavlink_log_pub, CAL_ERROR_RESET_CAL_MSG, s);
+				mavlink_log_critical(mavlink_log_pub, CAL_ERROR_RESET_CAL_MSG, s);
 				return PX4_ERROR;
 			}
 		}
@@ -297,7 +297,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 
 	// Warn that we will not calibrate more than max_gyros gyroscopes
 	if (orb_gyro_count > max_gyros) {
-		calibration_log_critical(mavlink_log_pub, "Detected %u gyros, but will calibrate only %u", orb_gyro_count, max_gyros);
+		mavlink_log_critical(mavlink_log_pub, "Detected %u gyros, but will calibrate only %u", orb_gyro_count, max_gyros);
 	}
 
 	for (unsigned cur_gyro = 0; cur_gyro < orb_gyro_count && cur_gyro < max_gyros; cur_gyro++) {
@@ -333,7 +333,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 		}
 
 		if(!found_cur_gyro) {
-			calibration_log_critical(mavlink_log_pub, "Gyro #%u (ID %u) no matching uORB devid", cur_gyro, worker_data.device_id[cur_gyro]);
+			mavlink_log_critical(mavlink_log_pub, "Gyro #%u (ID %u) no matching uORB devid", cur_gyro, worker_data.device_id[cur_gyro]);
 			res = calibrate_return_error;
 			break;
 		}
@@ -348,7 +348,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 				device_id_primary = worker_data.device_id[cur_gyro];
 			}
 		} else {
-			calibration_log_critical(mavlink_log_pub, "Gyro #%u no device id, abort", cur_gyro);
+			mavlink_log_critical(mavlink_log_pub, "Gyro #%u no device id, abort", cur_gyro);
 		}
 	}
 
@@ -386,7 +386,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 			    fabsf(ydiff) > maxoff ||
 			    fabsf(zdiff) > maxoff) {
 
-				calibration_log_critical(mavlink_log_pub, "motion, retrying..");
+				mavlink_log_critical(mavlink_log_pub, "motion, retrying..");
 				res = PX4_ERROR;
 
 			} else {
@@ -398,7 +398,7 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 	} while (res == PX4_ERROR && try_count <= max_tries);
 
 	if (try_count >= max_tries) {
-		calibration_log_critical(mavlink_log_pub, "ERROR: Motion during calibration");
+		mavlink_log_critical(mavlink_log_pub, "ERROR: Motion during calibration");
 		res = PX4_ERROR;
 	}
 
@@ -487,14 +487,14 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 				px4_close(fd);
 
 				if (res != PX4_OK) {
-					calibration_log_critical(mavlink_log_pub, CAL_ERROR_APPLY_CAL_MSG, 1);
+					mavlink_log_critical(mavlink_log_pub, CAL_ERROR_APPLY_CAL_MSG, 1);
 				}
 #endif
 			}
 		}
 
 		if (failed) {
-			calibration_log_critical(mavlink_log_pub, "ERROR: failed to set offset params");
+			mavlink_log_critical(mavlink_log_pub, "ERROR: failed to set offset params");
 			res = PX4_ERROR;
 		}
 	}
@@ -503,9 +503,9 @@ int do_gyro_calibration(orb_advert_t *mavlink_log_pub)
 	usleep(200000);
 
 	if (res == PX4_OK) {
-		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
+		mavlink_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, sensor_name);
 	} else {
-		calibration_log_info(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
+		mavlink_log_info(mavlink_log_pub, CAL_QGC_FAILED_MSG, sensor_name);
 	}
 
 	orb_unsubscribe(worker_data.sensor_correction_sub);

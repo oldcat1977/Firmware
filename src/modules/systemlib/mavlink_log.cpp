@@ -38,6 +38,8 @@
  * @author Lorenz Meier <lorenz@px4.io>
  */
 
+#include "mavlink_log.h"
+
 #include <drivers/drv_hrt.h>
 #include <px4_posix.h>
 #include <string.h>
@@ -45,45 +47,58 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#include <uORB/topics/mavlink_log.h>
-#include "mavlink_log.h"
-
-#define MAVLINK_LOG_QUEUE_SIZE 5
-
-
-__EXPORT void mavlink_vasprintf(int severity, orb_advert_t *mavlink_log_pub, const char *fmt, ...)
+void mavlink_log_publish(uint8_t severity, orb_advert_t *mavlink_log_pub, const char *fmt, ...)
 {
 	// TODO: add compile check for maxlen
-
-	if (!fmt) {
+	if (fmt == nullptr) {
 		return;
 	}
 
-	if (mavlink_log_pub == NULL) {
+	if (mavlink_log_pub == nullptr) {
 		return;
 	}
 
-	struct mavlink_log_s log_msg;
-
+	mavlink_log_s log_msg;
 	log_msg.severity = severity;
+
+	va_list ap;
+	va_start(ap, fmt);
+	vsnprintf((char *)log_msg.text, sizeof(log_msg.text), fmt, ap);
+	va_end(ap);
 
 	log_msg.timestamp = hrt_absolute_time();
 
-	va_list ap;
-
-	va_start(ap, fmt);
-
-	vsnprintf((char *)log_msg.text, sizeof(log_msg.text), fmt, ap);
-
-	va_end(ap);
-
-	if (*mavlink_log_pub != NULL) {
+	if (*mavlink_log_pub != nullptr) {
 		orb_publish(ORB_ID(mavlink_log), *mavlink_log_pub, &log_msg);
 
 	} else {
-		*mavlink_log_pub = orb_advertise_queue(ORB_ID(mavlink_log),
-						       &log_msg,
-						       MAVLINK_LOG_QUEUE_SIZE);
+		*mavlink_log_pub = orb_advertise_queue(ORB_ID(mavlink_log), &log_msg, mavlink_log_s::MAVLINK_LOG_ORB_QUEUE_LENGTH);
+	}
+
+	switch (severity) {
+	case mavlink_log_s::SEVERITY_EMERGENCY:
+		PX4_PANIC((const char *)log_msg.text);
+
+	case mavlink_log_s::SEVERITY_ALERT:
+	case mavlink_log_s::SEVERITY_CRITICAL:
+	case mavlink_log_s::SEVERITY_ERROR:
+		PX4_ERR((const char *)log_msg.text);
+		break;
+
+	case mavlink_log_s::SEVERITY_WARNING:
+	case mavlink_log_s::SEVERITY_NOTICE:
+		PX4_WARN((const char *)log_msg.text);
+		break;
+
+	case mavlink_log_s::SEVERITY_INFO:
+		PX4_INFO((const char *)log_msg.text);
+		break;
+
+	case mavlink_log_s::SEVERITY_DEBUG:
+		PX4_DEBUG((const char *)log_msg.text);
+		break;
+
+	default:
+		break;
 	}
 }
-

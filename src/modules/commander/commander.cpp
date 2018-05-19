@@ -573,10 +573,7 @@ transition_result_t arm_disarm(bool arm, orb_advert_t *mavlink_log_pub_local, co
 					     arm_requirements,
 					     hrt_elapsed_time(&commander_boot_timestamp));
 
-	if (arming_res == TRANSITION_CHANGED) {
-		mavlink_log_info(mavlink_log_pub_local, "%s by %s", arm ? "ARMED" : "DISARMED", armedBy);
-
-	} else if (arming_res == TRANSITION_DENIED) {
+	if (arming_res == TRANSITION_DENIED) {
 		tune_negative(true);
 	}
 

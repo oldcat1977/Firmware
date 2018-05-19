@@ -53,8 +53,6 @@ __EXPORT const char *__px4_log_level_color[_PX4_LOG_LEVEL_PANIC + 1] =
 
 void px4_log_initialize(void)
 {
-	ASSERT(orb_log_message_pub == NULL);
-
 	/* we need to advertise with a valid message */
 	struct log_message_s log_message;
 	log_message.timestamp = hrt_absolute_time();
@@ -63,27 +61,24 @@ void px4_log_initialize(void)
 
 #if !defined(PARAM_NO_ORB)
 	orb_log_message_pub = orb_advertise_queue(ORB_ID(log_message), &log_message, 2);
-#endif /* !PARAM_NO_ORB */
 
 	if (!orb_log_message_pub) {
 		PX4_ERR("failed to advertise log_message");
 	}
+
+#endif /* !PARAM_NO_ORB */
 }
 
 void px4_backtrace()
 {
 #if defined(__PX4_POSIX) && !defined(__PX4_CYGWIN)
 	void *buffer[10];
-	char **callstack;
-	int bt_size;
-	int idx;
-
-	bt_size = backtrace(buffer, 10);
-	callstack = backtrace_symbols(buffer, bt_size);
+	int bt_size = backtrace(buffer, 10);
+	char **callstack = backtrace_symbols(buffer, bt_size);
 
 	PX4_INFO("Backtrace: %d", bt_size);
 
-	for (idx = 0; idx < bt_size; idx++) {
+	for (int idx = 0; idx < bt_size; idx++) {
 		PX4_INFO("%s", callstack[idx]);
 	}
 
@@ -104,6 +99,8 @@ __EXPORT void px4_log_modulename(int level, const char *moduleName, const char *
 	va_end(argptr);
 	PX4_LOG_COLOR_END
 	printf("\n");
+
+#if !defined(PARAM_NO_ORB)
 
 	/* publish an orb log message */
 	if (level >= _PX4_LOG_LEVEL_WARN && orb_log_message_pub) { //only publish important messages
@@ -129,7 +126,6 @@ __EXPORT void px4_log_modulename(int level, const char *moduleName, const char *
 		va_end(argptr);
 		log_message.text[max_length - 1] = 0; //ensure 0-termination
 
-#if !defined(PARAM_NO_ORB)
 		orb_publish(ORB_ID(log_message), orb_log_message_pub, &log_message);
 #endif /* !PARAM_NO_ORB */
 	}

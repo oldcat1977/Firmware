@@ -69,8 +69,6 @@ int run_lm_ellipsoid_fit(const float x[], const float y[], const float z[], floa
 		      unsigned int size, float *offset_x, float *offset_y, float *offset_z,
 		      float *sphere_radius, float *diag_x, float *diag_y, float *diag_z, float *offdiag_x, float *offdiag_y,
 		      float *offdiag_z);
-bool inverse4x4(float m[], float invOut[]);
-bool mat_inverse(float* A, float* inv, uint8_t n);
 
 // FIXME: Change the name
 static const unsigned max_accel_sens = 3;
@@ -124,33 +122,10 @@ calibrate_return calibrate_from_orientation(orb_advert_t *mavlink_log_pub,		///<
 int calibrate_cancel_subscribe(void);
 
 /// Called to cancel the subscription to the cancel command
-///	@param cancel_sub Cancel subcription from calibration_cancel_subscribe
+///	@param cancel_sub Cancel subscription from calibration_cancel_subscribe
 void calibrate_cancel_unsubscribe(int cancel_sub);
 
 /// Used to periodically check for a cancel command
-bool calibrate_cancel_check(orb_advert_t *mavlink_log_pub,	///< uORB handle to write output to
-			    int cancel_sub);	///< Cancel subcription fromcalibration_cancel_subscribe
-
-
-// TODO FIXME: below are workarounds for QGC. The issue is that sometimes
-// a mavlink log message is overwritten by the following one. A workaround
-// is to wait for some time after publishing each message and hope that it
-// gets sent out in the meantime.
-
-#define calibration_log_info(_pub, _text, ...)			\
-	do { \
-		mavlink_and_console_log_info(_pub, _text, ##__VA_ARGS__); \
-		usleep(10000); \
-	} while(0);
-
-#define calibration_log_critical(_pub, _text, ...)			\
-	do { \
-		mavlink_log_critical(_pub, _text, ##__VA_ARGS__); \
-		usleep(10000); \
-	} while(0);
-
-#define calibration_log_emergency(_pub, _text, ...)			\
-	do { \
-		mavlink_log_emergency(_pub, _text, ##__VA_ARGS__); \
-		usleep(10000); \
-	} while(0);
+///	@param mavlink_log_pub uORB handle to write output to
+///	@param cancel_sub Cancel subscription fromcalibration_cancel_subscribe
+bool calibrate_cancel_check(orb_advert_t *mavlink_log_pub, int cancel_sub);

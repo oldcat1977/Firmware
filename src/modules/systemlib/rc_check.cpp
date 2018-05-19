@@ -110,7 +110,7 @@ int rc_calibration_check(orb_advert_t *mavlink_log_pub, bool report_fail, bool i
 		int32_t mapping;
 		param_get(map_parm, &mapping);
 
-		if (mapping > RC_INPUT_MAX_CHANNELS) {
+		if (mapping > input_rc_s::RC_INPUT_MAX_CHANNELS) {
 			if (report_fail) { mavlink_log_critical(mavlink_log_pub, "RC ERROR: %s >= NUMBER OF CHANNELS.", rc_map_mandatory[j]); }
 
 			/* give system time to flush error message in case there are more */
@@ -132,7 +132,7 @@ int rc_calibration_check(orb_advert_t *mavlink_log_pub, bool report_fail, bool i
 	unsigned total_fail_count = 0;
 	unsigned channels_failed = 0;
 
-	for (unsigned i = 0; i < RC_INPUT_MAX_CHANNELS; i++) {
+	for (unsigned i = 0; i < input_rc_s::RC_INPUT_MAX_CHANNELS; i++) {
 		/* should the channel be enabled? */
 		uint8_t count = 0;
 

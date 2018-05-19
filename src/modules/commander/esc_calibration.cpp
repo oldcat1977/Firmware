@@ -82,7 +82,7 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* a
 	hrt_abstime timeout_start;
 	hrt_abstime timeout_wait = 60*1000*1000;
 	armed->in_esc_calibration_mode = true;
-	calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "begin esc");
+	mavlink_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "begin esc");
 	timeout_start = hrt_absolute_time();
 	
 	while (true) {
@@ -94,10 +94,10 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* a
 	}
 
 	armed->in_esc_calibration_mode = false;
-	calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "end esc");
+	mavlink_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "end esc");
 
 	if (return_code == OK) {
-		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "esc");
+		mavlink_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "esc");
 	}
 		  
 	return return_code;
@@ -114,18 +114,18 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* a
 	hrt_abstime pwm_high_timeout = 3000000;
 	hrt_abstime timeout_start;
 
-	calibration_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, "esc");
+	mavlink_log_info(mavlink_log_pub, CAL_QGC_STARTED_MSG, "esc");
 
 	batt_sub = orb_subscribe(ORB_ID(battery_status));
 	if (batt_sub < 0) {
-		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Subscribe to battery");
+		mavlink_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Subscribe to battery");
 		goto Error;
 	}
 
 	// Make sure battery is disconnected
 	orb_copy(ORB_ID(battery_status), batt_sub, &battery);
 	if (battery.voltage_filtered_v > 3.0f) {
-		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Disconnect battery and try again");
+		mavlink_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Disconnect battery and try again");
 		goto Error;
 	}
 
@@ -134,29 +134,29 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* a
 	fd = px4_open(PWM_OUTPUT0_DEVICE_PATH, 0);
 
 	if (fd < 0) {
-		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Can't open PWM device");
+		mavlink_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Can't open PWM device");
 		goto Error;
 	}
 
 	/* tell IO/FMU that its ok to disable its safety with the switch */
 	if (px4_ioctl(fd, PWM_SERVO_SET_ARM_OK, 0) != PX4_OK) {
-		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Unable to disable safety switch");
+		mavlink_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Unable to disable safety switch");
 		goto Error;
 	}
 
 	/* tell IO/FMU that the system is armed (it will output values if safety is off) */
 	if (px4_ioctl(fd, PWM_SERVO_ARM, 0) != PX4_OK) {
-		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Unable to arm system");
+		mavlink_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Unable to arm system");
 		goto Error;
 	}
 
 	/* tell IO to switch off safety without using the safety switch */
 	if (px4_ioctl(fd, PWM_SERVO_SET_FORCE_SAFETY_OFF, 0) != PX4_OK) {
-		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Unable to force safety off");
+		mavlink_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Unable to force safety off");
 		goto Error;
 	}
 
-	calibration_log_info(mavlink_log_pub, "[cal] Connect battery now");
+	mavlink_log_info(mavlink_log_pub, "[cal] Connect battery now");
 
 	timeout_start = hrt_absolute_time();
 
@@ -167,7 +167,7 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* a
 
 		if (hrt_absolute_time() - timeout_start > timeout_wait) {
 			if (!batt_connected) {
-				calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Timeout waiting for battery");
+				mavlink_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "Timeout waiting for battery");
 				goto Error;
 			}
 
@@ -183,7 +183,7 @@ int do_esc_calibration(orb_advert_t *mavlink_log_pub, struct actuator_armed_s* a
 					// Battery is connected, signal to user and start waiting again
 					batt_connected = true;
 					timeout_start = hrt_absolute_time();
-					calibration_log_info(mavlink_log_pub, "[cal] Battery connected");
+					mavlink_log_info(mavlink_log_pub, "[cal] Battery connected");
 				}
 			}
 		}
@@ -196,20 +196,20 @@ Out:
 	}
 	if (fd != -1) {
 		if (px4_ioctl(fd, PWM_SERVO_SET_FORCE_SAFETY_ON, 0) != PX4_OK) {
-			calibration_log_info(mavlink_log_pub, CAL_QGC_WARNING_MSG, "Safety switch still off");
+			mavlink_log_info(mavlink_log_pub, CAL_QGC_WARNING_MSG, "Safety switch still off");
 		}
 		if (px4_ioctl(fd, PWM_SERVO_DISARM, 0) != PX4_OK) {
-			calibration_log_info(mavlink_log_pub, CAL_QGC_WARNING_MSG, "Servos still armed");
+			mavlink_log_info(mavlink_log_pub, CAL_QGC_WARNING_MSG, "Servos still armed");
 		}
 		if (px4_ioctl(fd, PWM_SERVO_CLEAR_ARM_OK, 0) != PX4_OK) {
-			calibration_log_info(mavlink_log_pub, CAL_QGC_WARNING_MSG, "Safety switch still deactivated");
+			mavlink_log_info(mavlink_log_pub, CAL_QGC_WARNING_MSG, "Safety switch still deactivated");
 		}
 		px4_close(fd);
 	}
 	armed->in_esc_calibration_mode = false;
 
 	if (return_code == PX4_OK) {
-		calibration_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "esc");
+		mavlink_log_info(mavlink_log_pub, CAL_QGC_DONE_MSG, "esc");
 	}
 
 	return return_code;

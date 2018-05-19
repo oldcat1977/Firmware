@@ -39,11 +39,11 @@ set(SRCS
 	cpuload.c
 	crc.c
 	hysteresis/hysteresis.cpp
-	mavlink_log.c
+	mavlink_log.cpp
 	otp.c
 	pid/pid.c
 	pwm_limit/pwm_limit.c
-	rc_check.c
+	rc_check.cpp
 	)
 
 if(${OS} STREQUAL "nuttx")

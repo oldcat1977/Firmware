@@ -593,7 +593,7 @@ enum detect_orientation_return detect_orientation(orb_advert_t *mavlink_log_pub,
 				/* is still now */
 				if (t_still == 0) {
 					/* first time */
-					calibration_log_info(mavlink_log_pub, "[cal] detected rest position, hold still...");
+					mavlink_log_info(mavlink_log_pub, "[cal] detected rest position, hold still...");
 					t_still = t;
 					t_timeout = t + timeout;
 
@@ -610,7 +610,7 @@ enum detect_orientation_return detect_orientation(orb_advert_t *mavlink_log_pub,
 				   accel_disp[2] > still_thr2 * 4.0f) {
 				/* not still, reset still start time */
 				if (t_still != 0) {
-					calibration_log_info(mavlink_log_pub, "[cal] detected motion, hold still...");
+					mavlink_log_info(mavlink_log_pub, "[cal] detected motion, hold still...");
 					usleep(200000);
 					t_still = 0;
 				}
@@ -625,7 +625,7 @@ enum detect_orientation_return detect_orientation(orb_advert_t *mavlink_log_pub,
 		}
 
 		if (poll_errcount > 1000) {
-			calibration_log_critical(mavlink_log_pub, CAL_ERROR_SENSOR_MSG);
+			mavlink_log_critical(mavlink_log_pub, CAL_ERROR_SENSOR_MSG);
 			return DETECT_ORIENTATION_ERROR;
 		}
 	}
@@ -666,7 +666,7 @@ enum detect_orientation_return detect_orientation(orb_advert_t *mavlink_log_pub,
 		return DETECT_ORIENTATION_RIGHTSIDE_UP;        // [ 0, 0, -g ]
 	}
 
-	calibration_log_critical(mavlink_log_pub, "ERROR: invalid orientation");
+	mavlink_log_critical(mavlink_log_pub, "ERROR: invalid orientation");
 
 	return DETECT_ORIENTATION_ERROR;	// Can't detect orientation
 }
@@ -700,7 +700,7 @@ calibrate_return calibrate_from_orientation(orb_advert_t *mavlink_log_pub,
 	int sub_accel = orb_subscribe(ORB_ID(sensor_combined));
 
 	if (sub_accel < 0) {
-		calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "No onboard accel");
+		mavlink_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "No onboard accel");
 		return calibrate_return_error;
 	}
 
@@ -715,7 +715,7 @@ calibrate_return calibrate_from_orientation(orb_advert_t *mavlink_log_pub,
 
 		if (orientation_failures > 4) {
 			result = calibrate_return_error;
-			calibration_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "timeout: no motion");
+			mavlink_log_critical(mavlink_log_pub, CAL_QGC_FAILED_MSG, "timeout: no motion");
 			break;
 		}
 
@@ -744,16 +744,16 @@ calibrate_return calibrate_from_orientation(orb_advert_t *mavlink_log_pub,
 			}
 		}
 
-		calibration_log_info(mavlink_log_pub, "[cal] pending:%s", pendingStr);
+		mavlink_log_info(mavlink_log_pub, "[cal] pending:%s", pendingStr);
 		usleep(20000);
-		calibration_log_info(mavlink_log_pub, "[cal] hold vehicle still on a pending side");
+		mavlink_log_info(mavlink_log_pub, "[cal] hold vehicle still on a pending side");
 		usleep(20000);
 		enum detect_orientation_return orient = detect_orientation(mavlink_log_pub, cancel_sub, sub_accel,
 							lenient_still_position);
 
 		if (orient == DETECT_ORIENTATION_ERROR) {
 			orientation_failures++;
-			calibration_log_info(mavlink_log_pub, "[cal] detected motion, hold still...");
+			mavlink_log_info(mavlink_log_pub, "[cal] detected motion, hold still...");
 			usleep(20000);
 			continue;
 		}
@@ -762,14 +762,14 @@ calibrate_return calibrate_from_orientation(orb_advert_t *mavlink_log_pub,
 		if (side_data_collected[orient]) {
 			orientation_failures++;
 			set_tune(TONE_NOTIFY_NEGATIVE_TUNE);
-			calibration_log_info(mavlink_log_pub, "[cal] %s side already completed", detect_orientation_str(orient));
+			mavlink_log_info(mavlink_log_pub, "[cal] %s side already completed", detect_orientation_str(orient));
 			usleep(20000);
 			continue;
 		}
 
-		calibration_log_info(mavlink_log_pub, CAL_QGC_ORIENTATION_DETECTED_MSG, detect_orientation_str(orient));
+		mavlink_log_info(mavlink_log_pub, CAL_QGC_ORIENTATION_DETECTED_MSG, detect_orientation_str(orient));
 		usleep(20000);
-		calibration_log_info(mavlink_log_pub, CAL_QGC_ORIENTATION_DETECTED_MSG, detect_orientation_str(orient));
+		mavlink_log_info(mavlink_log_pub, CAL_QGC_ORIENTATION_DETECTED_MSG, detect_orientation_str(orient));
 		usleep(20000);
 		orientation_failures = 0;
 
@@ -780,9 +780,9 @@ calibrate_return calibrate_from_orientation(orb_advert_t *mavlink_log_pub,
 			break;
 		}
 
-		calibration_log_info(mavlink_log_pub, CAL_QGC_SIDE_DONE_MSG, detect_orientation_str(orient));
+		mavlink_log_info(mavlink_log_pub, CAL_QGC_SIDE_DONE_MSG, detect_orientation_str(orient));
 		usleep(20000);
-		calibration_log_info(mavlink_log_pub, CAL_QGC_SIDE_DONE_MSG, detect_orientation_str(orient));
+		mavlink_log_info(mavlink_log_pub, CAL_QGC_SIDE_DONE_MSG, detect_orientation_str(orient));
 		usleep(20000);
 
 		// Note that this side is complete
