@@ -53,6 +53,7 @@
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/estimator_status.h>
 #include <uORB/topics/iridiumsbd_status.h>
+#include <uORB/topics/manual_control_switches.h>
 #include <uORB/topics/mission_result.h>
 #include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_global_position.h>
@@ -105,7 +106,9 @@ private:
 		(ParamInt<px4::params::COM_POS_FS_GAIN>) _failsafe_pos_gain,
 
 		(ParamInt<px4::params::COM_LOW_BAT_ACT>) _low_bat_action,
-		(ParamFloat<px4::params::COM_DISARM_LAND>) _disarm_when_landed_timeout
+		(ParamFloat<px4::params::COM_DISARM_LAND>) _disarm_when_landed_timeout,
+
+		(ParamBool<px4::params::COM_ARM_SWISBTN>) _arm_switch_is_button
 	)
 
 	const int64_t POSVEL_PROBATION_MIN = 1_s;	/**< minimum probation duration (usec) */
@@ -191,6 +194,7 @@ private:
 	// Subscriptions
 	Subscription<estimator_status_s>		_estimator_status_sub{ORB_ID(estimator_status)};
 	Subscription<iridiumsbd_status_s> 		_iridiumsbd_status_sub{ORB_ID(iridiumsbd_status)};
+	Subscription<manual_control_switches_s>		_manual_control_switches_sub{ORB_ID(manual_control_switches)};
 	Subscription<mission_result_s>			_mission_result_sub{ORB_ID(mission_result)};
 	Subscription<vehicle_global_position_s>		_global_position_sub{ORB_ID(vehicle_global_position)};
 	Subscription<vehicle_local_position_s>		_local_position_sub{ORB_ID(vehicle_local_position)};

@@ -161,10 +161,10 @@ void VtolAttitudeControl::vehicle_manual_poll()
 	bool updated;
 
 	/* get pilots inputs */
-	orb_check(_manual_control_sp_sub, &updated);
+	orb_check(_manual_control_switches_sub, &updated);
 
 	if (updated) {
-		orb_copy(ORB_ID(manual_control_setpoint), _manual_control_sp_sub, &_manual_control_sp);
+		orb_copy(ORB_ID(manual_control_switches), _manual_control_switches_sub, &_manual_control_switches);
 	}
 }
 
@@ -387,9 +387,10 @@ VtolAttitudeControl::is_fixed_wing_requested()
 {
 	bool to_fw = false;
 
-	if (_manual_control_sp.transition_switch != manual_control_setpoint_s::SWITCH_POS_NONE &&
+	if (_manual_control_switches.transition_switch != manual_control_switches_s::SWITCH_POS_NONE &&
 	    _v_control_mode.flag_control_manual_enabled) {
-		to_fw = (_manual_control_sp.transition_switch == manual_control_setpoint_s::SWITCH_POS_ON);
+
+		to_fw = (_manual_control_switches.transition_switch == manual_control_switches_s::SWITCH_POS_ON);
 
 	} else {
 		// listen to transition commands if not in manual or mode switch is not mapped
@@ -530,7 +531,7 @@ void VtolAttitudeControl::task_main()
 	_v_att_sub             = orb_subscribe(ORB_ID(vehicle_attitude));
 	_v_control_mode_sub    = orb_subscribe(ORB_ID(vehicle_control_mode));
 	_params_sub            = orb_subscribe(ORB_ID(parameter_update));
-	_manual_control_sp_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
+	_manual_control_switches_sub = orb_subscribe(ORB_ID(manual_control_switches));
 	_local_pos_sub         = orb_subscribe(ORB_ID(vehicle_local_position));
 	_local_pos_sp_sub         = orb_subscribe(ORB_ID(vehicle_local_position_setpoint));
 	_pos_sp_triplet_sub    = orb_subscribe(ORB_ID(position_setpoint_triplet));

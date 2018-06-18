@@ -42,6 +42,7 @@
 
 #include "FlightTask.hpp"
 #include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/manual_control_switches.h>
 
 class FlightTaskManual : public FlightTask
 {
@@ -59,7 +60,7 @@ protected:
 	bool _sticks_data_required = true; /**< let inherited task-class define if it depends on stick data */
 	matrix::Vector<float, 4> _sticks; /**< unmodified manual stick inputs */
 	matrix::Vector<float, 4> _sticks_expo; /**< modified manual sticks using expo function*/
-	int _gear_switch_old = manual_control_setpoint_s::SWITCH_POS_NONE; /**< old switch state*/
+	int _gear_switch_old = manual_control_switches_s::SWITCH_POS_NONE; /**< old switch state*/
 
 	float stickDeadzone() const { return _stick_dz.get(); }
 
@@ -69,6 +70,7 @@ private:
 	void _applyGearSwitch(uint8_t gswitch); /**< Sets gears according to switch */
 
 	uORB::Subscription<manual_control_setpoint_s> *_sub_manual_control_setpoint{nullptr};
+	uORB::Subscription<manual_control_switches_s> *_sub_manual_control_switches{nullptr};
 
 	DEFINE_PARAMETERS_CUSTOM_PARENT(FlightTask,
 					(ParamFloat<px4::params::MPC_HOLD_DZ>) _stick_dz, /**< 0-deadzone around the center for the sticks */

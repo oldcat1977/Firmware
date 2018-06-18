@@ -48,18 +48,35 @@
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/input_rc.h>
 
+using namespace time_literals;
+
 using namespace sensors;
 
-RCUpdate::RCUpdate(const Parameters &parameters)
-	: _parameters(parameters),
-	  _filter_roll(50.0f, 10.f), /* get replaced by parameter */
-	  _filter_pitch(50.0f, 10.f),
-	  _filter_yaw(50.0f, 10.f),
-	  _filter_throttle(50.0f, 10.f)
+// TODO: find a better home for these
+static bool operator ==(const manual_control_switches_s &a, const manual_control_switches_s &b)
 {
-	memset(&_rc, 0, sizeof(_rc));
-	memset(&_rc_parameter_map, 0, sizeof(_rc_parameter_map));
-	memset(&_param_rc_values, 0, sizeof(_param_rc_values));
+	return (a.mode_slot == b.mode_slot &&
+		a.mode_switch == b.mode_switch &&
+		a.return_switch == b.return_switch &&
+		a.rattitude_switch == b.rattitude_switch &&
+		a.posctl_switch == b.posctl_switch &&
+		a.loiter_switch == b.loiter_switch &&
+		a.acro_switch == b.acro_switch &&
+		a.offboard_switch == b.offboard_switch &&
+		a.kill_switch == b.kill_switch &&
+		a.arm_switch == b.arm_switch &&
+		a.transition_switch == b.transition_switch &&
+		a.gear_switch == b.gear_switch &&
+		a.stab_switch == b.stab_switch &&
+		a.man_switch == b.man_switch);
+}
+
+static bool operator !=(const manual_control_switches_s &a, const manual_control_switches_s &b) { return !(a == b); }
+
+
+RCUpdate::RCUpdate(const Parameters &parameters)
+	: _parameters(parameters)
+{
 }
 
 int RCUpdate::init()
@@ -192,17 +209,17 @@ RCUpdate::get_rc_sw3pos_position(uint8_t func, float on_th, bool on_inv, float m
 		float value = 0.5f * _rc.channels[_rc.function[func]] + 0.5f;
 
 		if (on_inv ? value < on_th : value > on_th) {
-			return manual_control_setpoint_s::SWITCH_POS_ON;
+			return manual_control_switches_s::SWITCH_POS_ON;
 
 		} else if (mid_inv ? value < mid_th : value > mid_th) {
-			return manual_control_setpoint_s::SWITCH_POS_MIDDLE;
+			return manual_control_switches_s::SWITCH_POS_MIDDLE;
 
 		} else {
-			return manual_control_setpoint_s::SWITCH_POS_OFF;
+			return manual_control_switches_s::SWITCH_POS_OFF;
 		}
 
 	} else {
-		return manual_control_setpoint_s::SWITCH_POS_NONE;
+		return manual_control_switches_s::SWITCH_POS_NONE;
 	}
 }
 
@@ -213,14 +230,14 @@ RCUpdate::get_rc_sw2pos_position(uint8_t func, float on_th, bool on_inv)
 		float value = 0.5f * _rc.channels[_rc.function[func]] + 0.5f;
 
 		if (on_inv ? value < on_th : value > on_th) {
-			return manual_control_setpoint_s::SWITCH_POS_ON;
+			return manual_control_switches_s::SWITCH_POS_ON;
 
 		} else {
-			return manual_control_setpoint_s::SWITCH_POS_OFF;
+			return manual_control_switches_s::SWITCH_POS_OFF;
 		}
 
 	} else {
-		return manual_control_setpoint_s::SWITCH_POS_NONE;
+		return manual_control_switches_s::SWITCH_POS_NONE;
 	}
 }
 
@@ -361,11 +378,10 @@ RCUpdate::rc_poll(const ParameterHandles &parameter_handles)
 		if (!signal_lost && rc_input.timestamp_last_signal > 0) {
 
 			/* initialize manual setpoint */
-			struct manual_control_setpoint_s manual = {};
-			/* set mode slot to unassigned */
-			manual.mode_slot = manual_control_setpoint_s::MODE_SLOT_NONE;
+			manual_control_setpoint_s manual{};
+
 			/* set the timestamp to the last signal time */
-			manual.timestamp = rc_input.timestamp_last_signal;
+			manual.timestamp_last_signal = rc_input.timestamp_last_signal;
 			manual.data_source = manual_control_setpoint_s::SOURCE_RC;
 
 			/* limit controls */
@@ -386,10 +402,19 @@ RCUpdate::rc_poll(const ParameterHandles &parameter_handles)
 			manual.r = math::constrain(_filter_yaw.apply(manual.r), -1.f, 1.f);
 			manual.z = math::constrain(_filter_throttle.apply(manual.z), 0.f, 1.f);
 
+			/* publish manual_control_setpoint topic */
+			manual.timestamp = hrt_absolute_time();
+			orb_publish_auto(ORB_ID(manual_control_setpoint), &_manual_control_pub, &manual, &instance, ORB_PRIO_HIGH);
+
+
+			// SWITCHES
+			manual_control_switches_s switches{};
+			switches.mode_slot = manual_control_switches_s::MODE_SLOT_NONE;
+
 			if (_parameters.rc_map_flightmode > 0) {
 
 				/* the number of valid slots equals the index of the max marker minus one */
-				const int num_slots = manual_control_setpoint_s::MODE_SLOT_MAX;
+				const int num_slots = manual_control_switches_s::MODE_SLOT_MAX;
 
 				/* the half width of the range of a slot is the total range
 				 * divided by the number of slots, again divided by two
@@ -405,50 +430,54 @@ RCUpdate::rc_poll(const ParameterHandles &parameter_handles)
 				 * slots. And finally we add half a slot width to ensure that integer rounding
 				 * will take us to the correct final index.
 				 */
-				manual.mode_slot = (((((_rc.channels[_parameters.rc_map_flightmode - 1] - slot_min) * num_slots) + slot_width_half) /
-						     (slot_max - slot_min)) + (1.0f / num_slots));
+				switches.mode_slot = (((((_rc.channels[_parameters.rc_map_flightmode - 1] - slot_min) * num_slots) + slot_width_half) /
+						       (slot_max - slot_min)) + (1.0f / num_slots));
 
-				if (manual.mode_slot >= num_slots) {
-					manual.mode_slot = num_slots - 1;
+				if (switches.mode_slot >= num_slots) {
+					switches.mode_slot = num_slots - 1;
 				}
 			}
 
 			/* mode switches */
-			manual.mode_switch = get_rc_sw3pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_MODE, _parameters.rc_auto_th,
-					     _parameters.rc_auto_inv, _parameters.rc_assist_th, _parameters.rc_assist_inv);
-			manual.rattitude_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_RATTITUDE,
-						  _parameters.rc_rattitude_th,
-						  _parameters.rc_rattitude_inv);
-			manual.posctl_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_POSCTL, _parameters.rc_posctl_th,
-					       _parameters.rc_posctl_inv);
-			manual.return_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_RETURN, _parameters.rc_return_th,
-					       _parameters.rc_return_inv);
-			manual.loiter_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_LOITER, _parameters.rc_loiter_th,
-					       _parameters.rc_loiter_inv);
-			manual.acro_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_ACRO, _parameters.rc_acro_th,
-					     _parameters.rc_acro_inv);
-			manual.offboard_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_OFFBOARD,
-						 _parameters.rc_offboard_th, _parameters.rc_offboard_inv);
-			manual.kill_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_KILLSWITCH,
-					     _parameters.rc_killswitch_th, _parameters.rc_killswitch_inv);
-			manual.arm_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_ARMSWITCH,
-					    _parameters.rc_armswitch_th, _parameters.rc_armswitch_inv);
-			manual.transition_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_TRANSITION,
-						   _parameters.rc_trans_th, _parameters.rc_trans_inv);
-			manual.gear_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_GEAR,
-					     _parameters.rc_gear_th, _parameters.rc_gear_inv);
-			manual.stab_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_STAB,
-					     _parameters.rc_stab_th, _parameters.rc_stab_inv);
-			manual.man_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_MAN,
-					    _parameters.rc_man_th, _parameters.rc_man_inv);
+			switches.mode_switch = get_rc_sw3pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_MODE, _parameters.rc_auto_th,
+					       _parameters.rc_auto_inv, _parameters.rc_assist_th, _parameters.rc_assist_inv);
+			switches.rattitude_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_RATTITUDE,
+						    _parameters.rc_rattitude_th, _parameters.rc_rattitude_inv);
+			switches.posctl_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_POSCTL, _parameters.rc_posctl_th,
+						 _parameters.rc_posctl_inv);
+			switches.return_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_RETURN, _parameters.rc_return_th,
+						 _parameters.rc_return_inv);
+			switches.loiter_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_LOITER, _parameters.rc_loiter_th,
+						 _parameters.rc_loiter_inv);
+			switches.acro_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_ACRO, _parameters.rc_acro_th,
+					       _parameters.rc_acro_inv);
+			switches.offboard_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_OFFBOARD,
+						   _parameters.rc_offboard_th, _parameters.rc_offboard_inv);
+			switches.kill_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_KILLSWITCH,
+					       _parameters.rc_killswitch_th, _parameters.rc_killswitch_inv);
+			switches.arm_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_ARMSWITCH, _parameters.rc_armswitch_th,
+					      _parameters.rc_armswitch_inv);
+			switches.transition_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_TRANSITION,
+						     _parameters.rc_trans_th, _parameters.rc_trans_inv);
+			switches.gear_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_GEAR, _parameters.rc_gear_th,
+					       _parameters.rc_gear_inv);
+			switches.stab_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_STAB, _parameters.rc_stab_th,
+					       _parameters.rc_stab_inv);
+			switches.man_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_MAN, _parameters.rc_man_th,
+					      _parameters.rc_man_inv);
 
-			/* publish manual_control_setpoint topic */
-			orb_publish_auto(ORB_ID(manual_control_setpoint), &_manual_control_pub, &manual, &instance,
-					 ORB_PRIO_HIGH);
+			// only publish changes
+			if ((switches != _manual_switches) || (hrt_elapsed_time(&_manual_switches.timestamp) >= 1_s)) {
+				_manual_switches = switches;
+				_manual_switches.timestamp_last_signal = _rc.timestamp;
+				_manual_switches.timestamp = hrt_absolute_time();
+				orb_publish_auto(ORB_ID(manual_control_switches), &_manual_switches_pub, &_manual_switches, &instance, ORB_PRIO_HIGH);
+			}
 
 			/* copy from mapped manual control to control group 3 */
-			struct actuator_controls_s actuator_group_3 = {};
+			actuator_controls_s actuator_group_3{};
 
+			actuator_group_3.timestamp = hrt_absolute_time();
 			actuator_group_3.timestamp = rc_input.timestamp_last_signal;
 
 			actuator_group_3.control[0] = manual.y;
@@ -461,11 +490,10 @@ RCUpdate::rc_poll(const ParameterHandles &parameter_handles)
 			actuator_group_3.control[7] = manual.aux3;
 
 			/* publish actuator_controls_3 topic */
-			orb_publish_auto(ORB_ID(actuator_controls_3), &_actuator_group_3_pub, &actuator_group_3, &instance,
-					 ORB_PRIO_DEFAULT);
+			orb_publish_auto(ORB_ID(actuator_controls_3), &_actuator_group_3_pub, &actuator_group_3, &instance, ORB_PRIO_DEFAULT);
 
 			/* Update parameters from RC Channels (tuning with RC) if activated */
-			if (hrt_elapsed_time(&_last_rc_to_param_map_time) > 1e6) {
+			if (hrt_elapsed_time(&_last_rc_to_param_map_time) > 1_s) {
 				set_params_from_rc(parameter_handles);
 				_last_rc_to_param_map_time = hrt_absolute_time();
 			}

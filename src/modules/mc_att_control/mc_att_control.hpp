@@ -44,6 +44,7 @@
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/battery_status.h>
 #include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/manual_control_switches.h>
 #include <uORB/topics/multirotor_motor_limits.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/rate_ctrl_status.h>
@@ -107,6 +108,7 @@ private:
 	void		vehicle_attitude_setpoint_poll();
 	void		vehicle_control_mode_poll();
 	bool		vehicle_manual_poll();
+	bool		manual_switches_poll();
 	void		vehicle_motor_limits_poll();
 	bool		vehicle_rates_setpoint_poll();
 	void		vehicle_status_poll();
@@ -152,6 +154,7 @@ private:
 	int		_v_control_mode_sub{-1};	/**< vehicle control mode subscription */
 	int		_params_sub{-1};		/**< parameter updates subscription */
 	int		_manual_control_sp_sub{-1};	/**< manual control setpoint subscription */
+	int		_manual_control_switches_sub{-1};	/**< manual control switches subscription */
 	int		_vehicle_status_sub{-1};	/**< vehicle status subscription */
 	int		_motor_limits_sub{-1};		/**< motor limits subscription */
 	int		_battery_status_sub{-1};	/**< battery status subscription */
@@ -178,6 +181,7 @@ private:
 	struct vehicle_attitude_setpoint_s	_v_att_sp {};		/**< vehicle attitude setpoint */
 	struct vehicle_rates_setpoint_s		_v_rates_sp {};		/**< vehicle rates setpoint */
 	struct manual_control_setpoint_s	_manual_control_sp {};	/**< manual control setpoint */
+	struct manual_control_switches_s	_manual_control_switches {};	/**< manual control setpoint */
 	struct vehicle_control_mode_s		_v_control_mode {};	/**< vehicle control mode */
 	struct actuator_controls_s		_actuators {};		/**< actuator controls */
 	struct vehicle_status_s			_vehicle_status {};	/**< vehicle status */

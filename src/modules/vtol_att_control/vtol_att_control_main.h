@@ -64,7 +64,7 @@
 
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/airspeed.h>
-#include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/manual_control_switches.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/tecs_status.h>
 #include <uORB/topics/vehicle_attitude.h>
@@ -130,7 +130,7 @@ private:
 	int	_land_detected_sub{-1};
 	int	_local_pos_sp_sub{-1};			// setpoint subscription
 	int	_local_pos_sub{-1};			// sensor subscription
-	int	_manual_control_sp_sub{-1};	//manual control setpoint subscription
+	int	_manual_control_switches_sub{-1};	//manual control switches subscription
 	int	_mc_virtual_att_sp_sub{-1};
 	int	_params_sub{-1};			//parameter updates subscription
 	int	_pos_sp_triplet_sub{-1};			// local position setpoint subscription
@@ -160,7 +160,7 @@ private:
 	actuator_controls_s			_actuators_out_1{};	//actuator controls going to the fw mixer (used for elevons)
 
 	airspeed_s 				_airspeed{};			// airspeed
-	manual_control_setpoint_s		_manual_control_sp{}; //manual control setpoint
+	manual_control_switches_s		_manual_control_switches{}; //manual control switches
 	position_setpoint_triplet_s		_pos_sp_triplet{};
 	tecs_status_s				_tecs_status{};
 	vehicle_attitude_s			_v_att{};				//vehicle attitude

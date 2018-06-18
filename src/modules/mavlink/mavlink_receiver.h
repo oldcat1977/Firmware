@@ -60,6 +60,7 @@
 #include <uORB/topics/home_position.h>
 #include <uORB/topics/landing_target_pose.h>
 #include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/manual_control_switches.h>
 #include <uORB/topics/obstacle_distance.h>
 #include <uORB/topics/offboard_control_mode.h>
 #include <uORB/topics/optical_flow.h>

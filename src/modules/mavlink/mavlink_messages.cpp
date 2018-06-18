@@ -72,6 +72,7 @@
 #include <uORB/topics/home_position.h>
 #include <uORB/topics/input_rc.h>
 #include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/manual_control_switches.h>
 #include <uORB/topics/mavlink_log.h>
 #include <uORB/topics/vehicle_trajectory_waypoint.h>
 #include <uORB/topics/optical_flow.h>
@@ -3470,6 +3471,7 @@ public:
 
 private:
 	MavlinkOrbSubscription *_manual_sub;
+	MavlinkOrbSubscription *_manual_switches_sub;
 	uint64_t _manual_time;
 
 	/* do not allow top copying this class */
@@ -3479,6 +3481,7 @@ private:
 protected:
 	explicit MavlinkStreamManualControl(Mavlink *mavlink) : MavlinkStream(mavlink),
 		_manual_sub(_mavlink->add_orb_subscription(ORB_ID(manual_control_setpoint))),
+		_manual_switches_sub(_mavlink->add_orb_subscription(ORB_ID(manual_control_switches))),
 		_manual_time(0)
 	{}
 
@@ -3487,6 +3490,9 @@ protected:
 		manual_control_setpoint_s manual;
 
 		if (_manual_sub->update(&_manual_time, &manual)) {
+			manual_control_switches_s manual_switches = {};
+			_manual_switches_sub->update(&manual_switches);
+
 			mavlink_manual_control_t msg = {};
 
 			msg.target = mavlink_system.sysid;
@@ -3496,12 +3502,12 @@ protected:
 			msg.r = manual.r * 1000;
 			unsigned shift = 2;
 			msg.buttons = 0;
-			msg.buttons |= (manual.mode_switch << (shift * 0));
-			msg.buttons |= (manual.return_switch << (shift * 1));
-			msg.buttons |= (manual.posctl_switch << (shift * 2));
-			msg.buttons |= (manual.loiter_switch << (shift * 3));
-			msg.buttons |= (manual.acro_switch << (shift * 4));
-			msg.buttons |= (manual.offboard_switch << (shift * 5));
+			msg.buttons |= (manual_switches.mode_switch << (shift * 0));
+			msg.buttons |= (manual_switches.return_switch << (shift * 1));
+			msg.buttons |= (manual_switches.posctl_switch << (shift * 2));
+			msg.buttons |= (manual_switches.loiter_switch << (shift * 3));
+			msg.buttons |= (manual_switches.acro_switch << (shift * 4));
+			msg.buttons |= (manual_switches.offboard_switch << (shift * 5));
 
 			mavlink_msg_manual_control_send_struct(_mavlink->get_channel(), &msg);
 

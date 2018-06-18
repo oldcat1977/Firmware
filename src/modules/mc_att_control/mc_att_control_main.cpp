@@ -236,6 +236,21 @@ MulticopterAttitudeControl::vehicle_manual_poll()
 	return false;
 }
 
+bool
+MulticopterAttitudeControl::manual_switches_poll()
+{
+	bool updated = false;
+
+	/* get pilots inputs */
+	orb_check(_manual_control_switches_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(manual_control_switches), _manual_control_switches_sub, &_manual_control_switches);
+		return true;
+	}
+	return false;
+}
+
 void
 MulticopterAttitudeControl::vehicle_attitude_setpoint_poll()
 {
@@ -415,11 +430,13 @@ MulticopterAttitudeControl::get_landing_gear_state()
 	if (_vehicle_land_detected.landed) {
 		_gear_state_initialized = false;
 	}
-	float landing_gear = landing_gear_s::GEAR_DOWN; // default to down
-	if (_manual_control_sp.gear_switch == manual_control_setpoint_s::SWITCH_POS_ON && _gear_state_initialized) {
+
+	int8_t landing_gear = landing_gear_s::GEAR_DOWN; // default to down
+
+	if (_manual_control_switches.gear_switch == manual_control_switches_s::SWITCH_POS_ON && _gear_state_initialized) {
 		landing_gear = landing_gear_s::GEAR_UP;
 
-	} else if (_manual_control_sp.gear_switch == manual_control_setpoint_s::SWITCH_POS_OFF) {
+	} else if (_manual_control_switches.gear_switch == manual_control_switches_s::SWITCH_POS_OFF) {
 		// Switching the gear off does put it into a safe defined state
 		_gear_state_initialized = true;
 	}
@@ -804,6 +821,7 @@ MulticopterAttitudeControl::run()
 	_v_control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
 	_params_sub = orb_subscribe(ORB_ID(parameter_update));
 	_manual_control_sp_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
+	_manual_control_switches_sub = orb_subscribe(ORB_ID(manual_control_switches));
 	_vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
 	_motor_limits_sub = orb_subscribe(ORB_ID(multirotor_motor_limits));
 	_battery_status_sub = orb_subscribe(ORB_ID(battery_status));
@@ -892,6 +910,7 @@ MulticopterAttitudeControl::run()
 			sensor_bias_poll();
 			vehicle_land_detected_poll();
 			landing_gear_state_poll();
+			manual_switches_poll();
 			const bool manual_control_updated = vehicle_manual_poll();
 			const bool attitude_updated = vehicle_attitude_poll();
 			attitude_dt += dt;
@@ -990,6 +1009,7 @@ MulticopterAttitudeControl::run()
 	orb_unsubscribe(_v_control_mode_sub);
 	orb_unsubscribe(_params_sub);
 	orb_unsubscribe(_manual_control_sp_sub);
+	orb_unsubscribe(_manual_control_switches_sub);
 	orb_unsubscribe(_vehicle_status_sub);
 	orb_unsubscribe(_motor_limits_sub);
 	orb_unsubscribe(_battery_status_sub);

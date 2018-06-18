@@ -52,6 +52,10 @@ bool FlightTaskManual::initializeSubscriptions(SubscriptionArray &subscription_a
 		return false;
 	}
 
+	if (!subscription_array.get(ORB_ID(manual_control_switches), _sub_manual_control_switches)) {
+		return false;
+	}
+
 	return true;
 }
 
@@ -89,7 +93,7 @@ bool FlightTaskManual::_evaluateSticks()
 		// Only switch the landing gear up if the user switched from gear down to gear up.
 		// If the user had the switch in the gear up position and took off ignore it
 		// until he toggles the switch to avoid retracting the gear immediately on takeoff.
-		int8_t gear_switch = _sub_manual_control_setpoint->get().gear_switch;
+		int8_t gear_switch = _sub_manual_control_switches->get().gear_switch;
 
 		if (_gear_switch_old != gear_switch) {
 			_applyGearSwitch(gear_switch);
@@ -116,11 +120,11 @@ bool FlightTaskManual::_evaluateSticks()
 
 void FlightTaskManual::_applyGearSwitch(uint8_t gswitch)
 {
-	if (gswitch == manual_control_setpoint_s::SWITCH_POS_OFF) {
+	if (gswitch == manual_control_switches_s::SWITCH_POS_OFF) {
 		_gear.landing_gear = landing_gear_s::GEAR_DOWN;
 	}
 
-	if (gswitch == manual_control_setpoint_s::SWITCH_POS_ON) {
+	if (gswitch == manual_control_switches_s::SWITCH_POS_ON) {
 		_gear.landing_gear = landing_gear_s::GEAR_UP;
 	}
 }
