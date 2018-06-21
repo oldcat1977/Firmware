@@ -68,6 +68,7 @@
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/offboard_setpoints.h>
 
 #include <float.h>
 #include <lib/ecl/geo/geo.h>
@@ -150,6 +151,7 @@ private:
 	int		_local_pos_sub;			/**< vehicle local position */
 	int		_pos_sp_triplet_sub;		/**< position setpoint triplet */
 	int		_home_pos_sub; 			/**< home position */
+	int 	_offboard_sp_sub; 		/**< offboard setpoints subscription */
 
 	orb_advert_t	_att_sp_pub;			/**< attitude setpoint publication */
 	orb_advert_t	_local_pos_sp_pub;		/**< vehicle local position setpoint publication */
@@ -166,6 +168,7 @@ private:
 	struct position_setpoint_triplet_s		_pos_sp_triplet;	/**< vehicle global position setpoint triplet */
 	struct vehicle_local_position_setpoint_s	_local_pos_sp;		/**< vehicle local position setpoint */
 	struct home_position_s				_home_pos; 				/**< home position */
+	struct offboard_setpoints_s			_offboard_sp;; 	 /**< offboard setpoints */
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::MPC_FLT_TSK>) _test_flight_tasks, /**< temporary flag for the transition to flight tasks */
@@ -442,6 +445,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_local_pos_sub(-1),
 	_pos_sp_triplet_sub(-1),
 	_home_pos_sub(-1),
+	_offboard_sp_sub(-1),
 
 	/* publications */
 	_att_sp_pub(nullptr),
@@ -457,6 +461,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_pos_sp_triplet{},
 	_local_pos_sp{},
 	_home_pos{},
+	_offboard_sp{},
 	_vel_x_deriv(this, "VELD"),
 	_vel_y_deriv(this, "VELD"),
 	_vel_z_deriv(this, "VELD"),
@@ -746,6 +751,12 @@ MulticopterPositionControl::poll_subscriptions()
 
 	if (updated) {
 		orb_copy(ORB_ID(home_position), _home_pos_sub, &_home_pos);
+	}
+
+	orb_check(_offboard_sp_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(offboard_setpoints), _offboard_sp_sub, &_offboard_sp);
 	}
 }
 
@@ -1454,8 +1465,9 @@ MulticopterPositionControl::control_non_manual()
 		_run_alt_control = false;
 	}
 
-	if (_pos_sp_triplet.current.valid
-	    && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
+	if ((_pos_sp_triplet.current.valid
+	     && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_IDLE) ||
+	    _offboard_sp.type == offboard_setpoints_s::TYPE_IDLE) {
 		/* idle state, don't run controller and set zero thrust */
 		_R_setpoint.identity();
 
@@ -1478,110 +1490,166 @@ MulticopterPositionControl::control_non_manual()
 void
 MulticopterPositionControl::control_offboard()
 {
-	if (_pos_sp_triplet.current.valid) {
+	static uint8_t type = offboard_setpoints_s::TYPE_STREAM;
 
-		if (_control_mode.flag_control_position_enabled && _pos_sp_triplet.current.position_valid) {
-			/* control position */
-			_pos_sp(0) = _pos_sp_triplet.current.x;
-			_pos_sp(1) = _pos_sp_triplet.current.y;
+	// reset hold offboard
+	if (_offboard_sp.type != offboard_setpoints_s::TYPE_LOITER && type ==  offboard_setpoints_s::TYPE_LOITER) {
+		_hold_offboard_xy = _hold_offboard_z = false;
+	}
+
+	if (_offboard_sp.type != offboard_setpoints_s::TYPE_TAKEOFF && type ==  offboard_setpoints_s::TYPE_TAKEOFF) {
+		_hold_offboard_xy =  false;
+	}
+
+	if (_offboard_sp.type != offboard_setpoints_s::TYPE_LAND && type ==  offboard_setpoints_s::TYPE_LAND) {
+		_hold_offboard_xy =  false;
+	}
+
+	if (_offboard_sp.type == offboard_setpoints_s::TYPE_LOITER) {
+		// loiter
+		_run_pos_control = true;
+		_run_alt_control = true;
+
+		if (PX4_ISFINITE(_offboard_sp.setpoint.x) && PX4_ISFINITE(_offboard_sp.setpoint.y)
+		    && PX4_ISFINITE(_offboard_sp.setpoint.z)) {
+			// set position setpoint to loiter setpoint
+			_pos_sp(0) = _offboard_sp.setpoint.x;
+			_pos_sp(1) = _offboard_sp.setpoint.y;
+			_pos_sp(2) = _offboard_sp.setpoint.z;
+
+		} else {
+			// lock position setpoint to current position
+			if (!_hold_offboard_xy && !_hold_offboard_z) {
+				_pos_sp = _pos;
+				_hold_offboard_xy = _hold_offboard_z = true;
+			}
+		}
+
+		if (PX4_ISFINITE(_offboard_sp.setpoint.yaw)) {
+			_att_sp.yaw_body = _offboard_sp.setpoint.yaw;
+		}
+
+	} else if (_offboard_sp.type == offboard_setpoints_s::TYPE_TAKEOFF) {
+		// takeoff
+
+		_run_pos_control = true;
+		_run_alt_control = true;
+
+		if (PX4_ISFINITE(_offboard_sp.setpoint.z)) {
+			// set takeoff setpoint to offboard setpoint
+			_pos_sp(2) = _offboard_sp.setpoint.z;
+
+		} else {
+			// for now just go to 2m
+			_pos_sp(2) = _home_pos.z - 2.0f;
+		}
+
+		// lock position setpoint to current position
+		if (!_hold_offboard_xy) {
+			_pos_sp(0) = _pos(0);
+			_pos_sp(1) = _pos(1);
+			_hold_offboard_xy = true;
+		}
+
+
+	} else if (_offboard_sp.type == offboard_setpoints_s::TYPE_LAND) {
+		// land
+
+		_run_pos_control = true;
+		_run_alt_control = false;
+
+		if (PX4_ISFINITE(_offboard_sp.setpoint.vz)) {
+			_vel_sp(2) = _offboard_sp.setpoint.vz;
+
+		} else {
+			_vel_sp(2) = _land_speed.get();
+		}
+
+		// lock position setpoint to current position
+		if (!_hold_offboard_xy) {
+			_pos_sp(0) = _pos(0);
+			_pos_sp(1) = _pos(1);
+			_hold_offboard_xy = true;
+		}
+
+	} else if (_offboard_sp.type == offboard_setpoints_s::TYPE_IDLE) {
+		//nothing to do because it is taken care of later in the code
+		_hold_offboard_xy = _hold_offboard_z = false;
+
+	} else {
+		// continuous stream of setpoints
+		_hold_offboard_xy = _hold_offboard_z = false;
+
+		// position/velocity
+		if (_control_mode.flag_control_position_enabled && PX4_ISFINITE(_offboard_sp.setpoint.x)
+		    && PX4_ISFINITE(_offboard_sp.setpoint.y)) {
 			_run_pos_control = true;
+			_pos_sp(0) = _offboard_sp.setpoint.x;
+			_pos_sp(1) = _offboard_sp.setpoint.y;
 
-			_hold_offboard_xy = false;
+		} else if (_control_mode.flag_control_velocity_enabled && PX4_ISFINITE(_offboard_sp.setpoint.vx)
+			   && PX4_ISFINITE(_offboard_sp.setpoint.vy)) {
+			_run_pos_control = false;
 
-		} else if (_control_mode.flag_control_velocity_enabled && _pos_sp_triplet.current.velocity_valid) {
-			/* control velocity */
-
-			/* reset position setpoint to current position if needed */
-			reset_pos_sp();
-
-			if (fabsf(_pos_sp_triplet.current.vx) <= FLT_EPSILON &&
-			    fabsf(_pos_sp_triplet.current.vy) <= FLT_EPSILON &&
-			    _local_pos.xy_valid) {
-
-				if (!_hold_offboard_xy) {
-					_pos_sp(0) = _pos(0);
-					_pos_sp(1) = _pos(1);
-					_hold_offboard_xy = true;
-				}
-
-				_run_pos_control = true;
+			if (_offboard_sp.velocity_frame == offboard_setpoints_s::VELOCITY_FRAME_LOCAL_NED) {
+				_vel_sp(0) = _offboard_sp.setpoint.vx;
+				_vel_sp(1) = _offboard_sp.setpoint.vy;
 
 			} else {
-
-				if (_pos_sp_triplet.current.velocity_frame == position_setpoint_s::VELOCITY_FRAME_LOCAL_NED) {
-					/* set position setpoint move rate */
-					_vel_sp(0) = _pos_sp_triplet.current.vx;
-					_vel_sp(1) = _pos_sp_triplet.current.vy;
-
-				} else if (_pos_sp_triplet.current.velocity_frame == position_setpoint_s::VELOCITY_FRAME_BODY_NED) {
-					// Transform velocity command from body frame to NED frame
-					_vel_sp(0) = cosf(_yaw) * _pos_sp_triplet.current.vx - sinf(_yaw) * _pos_sp_triplet.current.vy;
-					_vel_sp(1) = sinf(_yaw) * _pos_sp_triplet.current.vx + cosf(_yaw) * _pos_sp_triplet.current.vy;
-
-				} else {
-					warn_rate_limited("Unknown velocity offboard coordinate frame");
-				}
-
-				_run_pos_control = false;
-
-				_hold_offboard_xy = false;
+				// Transform velocity command from body frame to NED frame
+				_vel_sp(0) = cosf(_yaw) * _offboard_sp.setpoint.vx - sinf(_yaw) * _offboard_sp.setpoint.vy;
+				_vel_sp(1) = sinf(_yaw) * _offboard_sp.setpoint.vx + cosf(_yaw) * _offboard_sp.setpoint.vy;
 			}
 		}
 
-		if (_control_mode.flag_control_altitude_enabled && _pos_sp_triplet.current.alt_valid) {
-			/* control altitude as it is enabled */
-			_pos_sp(2) = _pos_sp_triplet.current.z;
+		// altitude/climbrate
+		if (_control_mode.flag_control_altitude_enabled && PX4_ISFINITE(_offboard_sp.setpoint.z)) {
 			_run_alt_control = true;
+			_pos_sp(2) = _offboard_sp.setpoint.z;
 
-			_hold_offboard_z = false;
-
-		} else if (_control_mode.flag_control_climb_rate_enabled && _pos_sp_triplet.current.velocity_valid) {
-
-			/* reset alt setpoint to current altitude if needed */
-			reset_alt_sp();
-
-			if (fabsf(_pos_sp_triplet.current.vz) <= FLT_EPSILON &&
-			    _local_pos.z_valid) {
-
-				if (!_hold_offboard_z) {
-					_pos_sp(2) = _pos(2);
-					_hold_offboard_z = true;
-				}
-
-				_run_alt_control = true;
-
-			} else {
-				/* set position setpoint move rate */
-				_vel_sp(2) = _pos_sp_triplet.current.vz;
-				_run_alt_control = false;
-
-				_hold_offboard_z = false;
-			}
+		} else if (_control_mode.flag_control_climb_rate_enabled && PX4_ISFINITE(_offboard_sp.setpoint.vz)) {
+			_run_alt_control = false;
+			_vel_sp(2) = _offboard_sp.setpoint.vz;
 		}
 
-		if (_pos_sp_triplet.current.yaw_valid) {
-			_att_sp.yaw_body = _pos_sp_triplet.current.yaw;
+		// acceleration -> not supported
+		if (_control_mode.flag_control_acceleration_enabled &&
+		    PX4_ISFINITE(_offboard_sp.setpoint.acc_x) && PX4_ISFINITE(_offboard_sp.setpoint.acc_y)
+		    &&  PX4_ISFINITE(_offboard_sp.setpoint.acc_z)) {
+			warn_rate_limited("Acceleration control not supported");
+			// just try to keep 0 velocity
+			_vel_sp *= 0.0f;
+			_run_pos_control = _run_alt_control = false;
+		}
 
-		} else if (_pos_sp_triplet.current.yawspeed_valid) {
-			float yaw_target = wrap_pi(_att_sp.yaw_body + _pos_sp_triplet.current.yawspeed * _dt);
+		// thrust
+		if (_control_mode.flag_control_acceleration_enabled &&
+		    PX4_ISFINITE(_offboard_sp.setpoint.thrust[0]) && PX4_ISFINITE(_offboard_sp.setpoint.thrust[1])
+		    &&  PX4_ISFINITE(_offboard_sp.setpoint.thrust[2])) {
+			_run_pos_control = _run_alt_control = false;
+			// don't have to do anything else. thrust setpoint will be taken care of later in the code where thrust is generated
+		}
+
+		// yaw
+		if (PX4_ISFINITE(_offboard_sp.setpoint.yaw)) {
+			_att_sp.yaw_body = _offboard_sp.setpoint.yaw;
+
+		} else if (PX4_ISFINITE(_offboard_sp.setpoint.yawspeed)) {
+			float yaw_target = wrap_pi(_att_sp.yaw_body + _offboard_sp.setpoint.yawspeed * _dt);
 			float yaw_offs = wrap_pi(yaw_target - _yaw);
 			const float yaw_rate_max = (_man_yaw_max < _global_yaw_max) ? _man_yaw_max : _global_yaw_max;
 			const float yaw_offset_max = yaw_rate_max / _mc_att_yaw_p.get();
 
 			// If the yaw offset became too big for the system to track stop
 			// shifting it, only allow if it would make the offset smaller again.
-			if (fabsf(yaw_offs) < yaw_offset_max ||
-			    (_pos_sp_triplet.current.yawspeed > 0 && yaw_offs < 0) ||
-			    (_pos_sp_triplet.current.yawspeed < 0 && yaw_offs > 0)) {
+			if (fabsf(yaw_offs) < yaw_offset_max || (_offboard_sp.setpoint.yawspeed > 0 && yaw_offs < 0) ||
+			    (_offboard_sp.setpoint.yawspeed < 0 && yaw_offs > 0)) {
 				_att_sp.yaw_body = yaw_target;
 			}
 		}
 
-	} else {
-		_hold_offboard_xy = false;
-		_hold_offboard_z = false;
-		reset_pos_sp();
-		reset_alt_sp();
+		// update type
+		type = _offboard_sp.type;
 	}
 }
 
@@ -2332,6 +2400,7 @@ MulticopterPositionControl::do_control()
 
 		_hold_offboard_xy = false;
 		_hold_offboard_z = false;
+		_offboard_sp.type = offboard_setpoints_s::TYPE_STREAM;
 
 	} else {
 		/* reset acceleration to default */
@@ -2412,7 +2481,8 @@ MulticopterPositionControl::calculate_velocity_setpoint()
 	float altitude_above_home = -_pos(2) + _home_pos.z;
 
 	if (_pos_sp_triplet.current.valid
-	    && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF
+	    && (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF
+		|| _offboard_sp.type == offboard_setpoints_s::TYPE_TAKEOFF)
 	    && !_control_mode.flag_control_manual_enabled) {
 		float vel_limit = math::gradual(altitude_above_home,
 						_slow_land_alt2.get(), _slow_land_alt1.get(),
@@ -2506,8 +2576,12 @@ MulticopterPositionControl::calculate_thrust_setpoint()
 	/* thrust vector in NED frame */
 	matrix::Vector3f thrust_sp;
 
-	if (_control_mode.flag_control_acceleration_enabled && _pos_sp_triplet.current.acceleration_valid) {
-		thrust_sp = matrix::Vector3f(_pos_sp_triplet.current.a_x, _pos_sp_triplet.current.a_y, _pos_sp_triplet.current.a_z);
+	if (_control_mode.flag_control_acceleration_enabled &&
+	    PX4_ISFINITE(_offboard_sp.setpoint.thrust[0]) && PX4_ISFINITE(_offboard_sp.setpoint.thrust[1])
+	    && PX4_ISFINITE(_offboard_sp.setpoint.thrust[2])) {
+		// offboard thrust setpoint
+		thrust_sp = matrix::Vector3f(_offboard_sp.setpoint.thrust[0], _offboard_sp.setpoint.thrust[1],
+					     _offboard_sp.setpoint.thrust[2]);
 
 	} else {
 		thrust_sp = vel_err.emult(_vel_p) + _vel_err_d.emult(_vel_d)
@@ -2931,6 +3005,7 @@ MulticopterPositionControl::task_main()
 	_local_pos_sub = orb_subscribe(ORB_ID(vehicle_local_position));
 	_pos_sp_triplet_sub = orb_subscribe(ORB_ID(position_setpoint_triplet));
 	_home_pos_sub = orb_subscribe(ORB_ID(home_position));
+	_offboard_sp_sub = orb_subscribe(ORB_ID(offboard_setpoints));
 
 	parameters_update(true);
 
