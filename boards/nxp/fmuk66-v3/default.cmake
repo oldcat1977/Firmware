@@ -44,6 +44,7 @@ px4_add_board(
 		px4flow
 		px4fmu
 		rc_input
+		safety_button
 		tap_esc
 		telemetry # all available telemetry drivers
 		#test_ppm # NOT Portable YET

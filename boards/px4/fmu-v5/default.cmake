@@ -53,6 +53,7 @@ px4_add_board(
 		px4io
 		rc_input
 		roboclaw
+		safety_button
 		stm32
 		stm32/adc
 		stm32/tone_alarm
