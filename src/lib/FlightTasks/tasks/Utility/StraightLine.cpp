@@ -40,8 +40,8 @@
 #include <float.h>
 #include <px4_defines.h>
 
-#define VEL_ZERO_THRESHOLD 0.001f // Threshold to compare if the target velocity is zero
-#define DECELERATION_MAX 8.0f     // The vehicles maximum deceleration TODO check to create param
+static constexpr float VEL_ZERO_THRESHOLD = 0.001f; // Threshold to compare if the target velocity is zero
+static constexpr float  DECELERATION_MAX = 8.0f;     // The vehicles maximum deceleration TODO check to create param
 
 using namespace matrix;
 
