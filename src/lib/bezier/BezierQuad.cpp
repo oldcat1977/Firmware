@@ -92,14 +92,14 @@ void BezierQuad<Tp>::getStates(Vector3_t &point, Vector3_t &vel, Vector3_t &acc,
 }
 
 template<typename Tp>
-void BezierQuad<Tp>::getStatesClosest(Vector3_t &point, Vector3_t &vel, Vector3_t &acc,
+void BezierQuad<Tp>::getStatesClosest(Vector3_t &point, Vector3_t &vel, Vector3_t &acc, Tp &time,
 				      const Vector3_t pose)
 {
 	// get t that corresponds to point closest on bezier point
-	Tp t = _goldenSectionSearch(pose);
+	time = _goldenSectionSearch(pose);
 
 	// get states corresponding to t
-	getStates(point, vel, acc, t);
+	getStates(point, vel, acc, time);
 
 }
 

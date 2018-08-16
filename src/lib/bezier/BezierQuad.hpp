@@ -109,7 +109,10 @@ public:
 	 *
 	 * @param time is the total time it takes to travel along the bezier spline.
 	 */
-	void setDuration(const Tp time) {_duration = time;}
+	void setDuration(const Tp time) {_duration = time;};
+
+
+	float getDuration() {return _duration;};
 
 	/**
 	 * Return point on bezier point corresponding to time t
@@ -155,7 +158,7 @@ public:
 	 * @param acc is the acceleration for that spline
 	 * @param pose represent a position in space from which closest point is computed
 	 */
-	void getStatesClosest(Vector3_t &point, Vector3_t &vel, Vector3_t &acc,
+	void getStatesClosest(Vector3_t &point, Vector3_t &vel, Vector3_t &acc, Tp &time,
 			      const Vector3_t pose);
 
 	/*

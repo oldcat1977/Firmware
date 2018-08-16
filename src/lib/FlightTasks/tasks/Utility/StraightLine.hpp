@@ -57,6 +57,9 @@ public:
 	void setAcceleration(const float &acc);
 	void setDeceleration(const float &dec);
 
+	matrix::Vector3f getOrigin() {return _origin;};
+	matrix::Vector3f getTarget() {return _target;};
+
 	/**
 	 * Set all parameters to their default value depending on the direction of the line
 	 */

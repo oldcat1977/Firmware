@@ -56,8 +56,8 @@ StraightLine::StraightLine(ModuleParams *parent, const float &deltatime, const m
 void StraightLine::generateSetpoints(matrix::Vector3f &position_setpoint, matrix::Vector3f &velocity_setpoint)
 {
 	// Check if target position has been reached
-	if (_desired_speed_at_target < VEL_ZERO_THRESHOLD &&
-	    velocity_setpoint.length() < 0.1f && (_target - position_setpoint).length() < TARGET_REACHED_THRESHOLD) {
+	if (_desired_speed_at_target < VEL_ZERO_THRESHOLD
+	    && (_target - position_setpoint).length() < TARGET_REACHED_THRESHOLD) {
 		// Vehicle has reached target. Lock position
 		position_setpoint = _target;
 		velocity_setpoint = Vector3f(0.0f, 0.0f, 0.0f);
@@ -86,20 +86,43 @@ void StraightLine::generateSetpoints(matrix::Vector3f &position_setpoint, matrix
 	acc_dec_distance = math::min(acc_dec_distance, orig_to_target.length() / 2.0f);
 
 	float dist_to_target = (_target - _pos).length(); // distance to target
+	float speed_sp;
 
 	// Either accelerate or decelerate
-	float speed_sp    = dist_to_target > acc_dec_distance ? _desired_speed        :  _desired_speed_at_target;
-	float max_acc_dec = speed_sp > speed_sp_prev          ? _desired_acceleration : -_desired_deceleration;
+	if (dist_to_target < acc_dec_distance) {
+		//decelerate
+		if (acc_dec_distance > 0.001f) {
+			// Slow down depending on distance to target minus acceptance radius.
+			float m = (_desired_speed - _desired_speed_at_target) / (acc_dec_distance);
+			speed_sp = m * (dist_to_target) + _desired_speed_at_target; // speed at transition
 
-	float acc_track = 0.0f;
+		} else {
+			speed_sp = _desired_speed_at_target;
+		}
 
-	if (_deltatime > FLT_EPSILON) {
-		acc_track = (speed_sp - speed_sp_prev) / _deltatime;
-	}
 
-	if (fabs(acc_track) > fabs(max_acc_dec)) {
-		// accelerate/decelerate with desired acceleration/deceleration towards target
-		speed_sp = speed_sp_prev + max_acc_dec * _deltatime;
+		// // If we are close to target and the previous speed setpoint along track was smaller than
+		// // current speed setpoint along track, then take over the previous one.
+		// // This ensures smoothness since we anyway want to slow down.
+		// if (speed_sp_prev < speed_sp) {
+		// 	speed_sp = speed_sp_prev;
+		// }
+
+	} else {
+		// accelerate
+		speed_sp = _desired_speed;
+
+		float acc_track = 0.0f;
+
+		if (_deltatime > FLT_EPSILON) {
+			acc_track = (speed_sp - speed_sp_prev) / _deltatime;
+		}
+
+		if (fabs(acc_track) > fabs(_desired_acceleration)) {
+			// accelerate/decelerate with desired acceleration/deceleration towards target
+			speed_sp = speed_sp_prev + acc_track * _deltatime;
+		}
+
 	}
 
 	// constrain the velocity
