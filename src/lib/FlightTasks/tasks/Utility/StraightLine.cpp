@@ -120,7 +120,7 @@ void StraightLine::generateSetpoints(matrix::Vector3f &position_setpoint, matrix
 
 		if (fabs(acc_track) > fabs(_desired_acceleration)) {
 			// accelerate/decelerate with desired acceleration/deceleration towards target
-			speed_sp = speed_sp_prev + acc_track * _deltatime;
+			speed_sp = speed_sp_prev + _desired_acceleration * _deltatime;
 		}
 
 	}
@@ -131,6 +131,7 @@ void StraightLine::generateSetpoints(matrix::Vector3f &position_setpoint, matrix
 	// set the position and velocity setpoints
 	position_setpoint = closest_pt_on_line;
 	velocity_setpoint = u_orig_to_target * speed_sp;
+
 }
 
 float StraightLine::getMaxAcc()
@@ -249,7 +250,7 @@ void StraightLine::setSpeedAtTarget(const float &speed_at_target)
 
 void StraightLine::setAcceleration(const float &acc)
 {
-	float acc_max = getMaxVel();
+	float acc_max = getMaxAcc();
 
 	if (acc > FLT_EPSILON && acc < acc_max) {
 		_desired_acceleration = acc;
