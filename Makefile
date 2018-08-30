@@ -284,7 +284,7 @@ format:
 
 # Testing
 # --------------------------------------------------------------------
-.PHONY: tests tests_coverage tests_mission tests_mission_coverage tests_offboard rostest python_coverage
+.PHONY: tests tests_coverage tests_mission tests_mission_coverage tests_offboard rostest python_coverage tests_avoidance
 
 tests:
 	@$(MAKE) --no-print-directory posix_sitl_default test_results \
@@ -312,6 +312,9 @@ tests_mission_coverage:
 tests_offboard: rostest
 	@$(SRC_DIR)/test/rostest_px4_run.sh mavros_posix_tests_offboard_attctl.test
 	@$(SRC_DIR)/test/rostest_px4_run.sh mavros_posix_tests_offboard_posctl.test
+
+tests_avoidance:
+	@$(SRC_DIR)/test/rostest_avoidance_run.sh mavros_posix_test_avoidance.test
 
 python_coverage:
 	@mkdir -p $(SRC_DIR)/build/python_coverage
