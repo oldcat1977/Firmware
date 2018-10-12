@@ -693,7 +693,7 @@ MulticopterPositionControl::run()
 				setpoint.yaw = _states.yaw;
 				constraints.landing_gear = vehicle_constraints_s::GEAR_KEEP;
 				// reactivate the task which will reset the setpoint to current state
-				_flight_tasks.reActivate();
+				//_flight_tasks.reActivate();
 			}
 
 			// limit altitude only if local position is valid

@@ -41,6 +41,7 @@
 #pragma once
 
 #include "FlightTaskAutoMapper.hpp"
+#include "VelocitySmoothing.hpp"
 
 class FlightTaskAutoLine : public FlightTaskAutoMapper
 {
@@ -48,13 +49,17 @@ public:
 	FlightTaskAutoLine() = default;
 	virtual ~FlightTaskAutoLine() = default;
 
+	bool activate() override;
+
 protected:
 
 	DEFINE_PARAMETERS_CUSTOM_PARENT(FlightTaskAutoMapper,
 					(ParamFloat<px4::params::MIS_YAW_ERR>) MIS_YAW_ERR, // yaw-error threshold
 					(ParamFloat<px4::params::MPC_ACC_HOR>) MPC_ACC_HOR, // acceleration in flight
 					(ParamFloat<px4::params::MPC_ACC_UP_MAX>) MPC_ACC_UP_MAX,
-					(ParamFloat<px4::params::MPC_ACC_DOWN_MAX>) MPC_ACC_DOWN_MAX
+					(ParamFloat<px4::params::MPC_ACC_DOWN_MAX>) MPC_ACC_DOWN_MAX,
+					(ParamFloat<px4::params::MPC_ACC_HOR_MAX>) MPC_ACC_HOR_MAX,
+					(ParamFloat<px4::params::MPC_JERK_MAX>) MPC_JERK_MAX
 				       );
 
 	void _generateSetpoints() override; /**< Generate setpoints along line. */
@@ -62,4 +67,6 @@ protected:
 	void _generateHeadingAlongTrack(); /**< Generates heading along track. */
 	void _generateAltitudeSetpoints(); /**< Generate velocity and position setpoints for following line along z. */
 	void _generateXYsetpoints(); /**< Generate velocity and position setpoints for following line along xy. */
+	void _generateTrajectory();
+	VelocitySmoothing _smoothing[3]; ///< Smoothing in x, y and z directions
 };

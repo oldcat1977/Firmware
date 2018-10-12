@@ -74,13 +74,13 @@ bool FlightTaskAutoMapper::update()
 		_generateIdleSetpoints();
 
 	} else if (_type == WaypointType::land) {
-		_generateLandSetpoints();
+		_generateSetpoints();
 
 	} else if (follow_line) {
 		_generateSetpoints();
 
 	} else if (_type == WaypointType::takeoff) {
-		_generateTakeoffSetpoints();
+		_generateSetpoints();
 
 	} else if (_type == WaypointType::velocity) {
 		_generateVelocitySetpoints();
