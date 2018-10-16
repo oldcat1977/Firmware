@@ -53,6 +53,13 @@ bool FlightTaskAutoLine::activate()
 	return ret;
 }
 
+void FlightTaskAutoLine::_setDefaultConstraints()
+{
+	FlightTaskAuto::_setDefaultConstraints();
+
+	_constraints.speed_xy = MPC_XY_VEL_MAX.get();
+}
+
 void FlightTaskAutoLine::_generateSetpoints()
 {
 	if (!PX4_ISFINITE(_yaw_setpoint)) {
@@ -89,7 +96,7 @@ void FlightTaskAutoLine::_generateXYsetpoints()
 	//float speed_sp_prev_track = math::max(Vector2f(_velocity_setpoint) * u_prev_to_dest, 0.0f);
 
 	speed_sp_track = closest_to_dest.length() * 0.3f;
-	speed_sp_track = math::constrain(speed_sp_track, 0.0f, _mc_cruise_speed);
+	speed_sp_track = math::constrain(speed_sp_track, 0.0f, MPC_XY_CRUISE.get());
 
 	_position_setpoint(0) = closest_pt(0);
 	_position_setpoint(1) = closest_pt(1);
@@ -126,15 +133,32 @@ void FlightTaskAutoLine::_generateTrajectory()
 		//_smoothing[2].setMaxVel(_constraints.speed_down);
 		_smoothing[2].setMaxVel(10.f);
 	}
+
+
 	for (int i = 0; i < 3; ++i) {
 		_smoothing[i].updateDurations(_deltatime, _velocity_setpoint(i));
 	}
 
 	VelocitySmoothing::timeSynchronization(_smoothing, 2); // Synchronize x and y only
 
+	/* Slow down the trajectory by decreasing the integration time based on the position error.
+	 * This is only performed when the drone is behind the trajectory
+	 */
+	Vector2f position_trajectory_xy(_smoothing[0].getCurrentPosition(), _smoothing[1].getCurrentPosition());
+	Vector2f position_xy(&_position(0));
+	Vector2f vel_traj_xy(_smoothing[0].getCurrentVelocity(), _smoothing[1].getCurrentVelocity());
+	Vector2f drone_to_trajectory_xy(position_trajectory_xy - position_xy);
+	float position_error = drone_to_trajectory_xy.length();
+
+	float time_stretch = 1.f - math::constrain(position_error * 0.5f, 0.f, 1.f);
+
+	if (drone_to_trajectory_xy.dot(vel_traj_xy) < 0.f) {
+		time_stretch = 1.f;
+	}
+
 	Vector3f accel_sp_smooth;
 
 	for (int i = 0; i < 3; ++i) {
-		_smoothing[i].integrate(accel_sp_smooth(i), _velocity_setpoint(i), _position_setpoint(i));
+		_smoothing[i].integrate(_deltatime * time_stretch, accel_sp_smooth(i), _velocity_setpoint(i), _position_setpoint(i));
 	}
 }

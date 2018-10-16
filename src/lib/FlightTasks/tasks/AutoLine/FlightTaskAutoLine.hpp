@@ -63,6 +63,7 @@ protected:
 				       );
 
 	void _generateSetpoints() override; /**< Generate setpoints along line. */
+	void _setDefaultConstraints() override;
 
 	void _generateHeadingAlongTrack(); /**< Generates heading along track. */
 	void _generateAltitudeSetpoints(); /**< Generate velocity and position setpoints for following line along z. */
