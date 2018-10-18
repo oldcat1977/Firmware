@@ -47,7 +47,7 @@ from __future__ import print_function
 import sys
 import os
 import argparse
-from px4params import srcscanner, srcparser, xmlout, markdownout
+from px4params import srcscanner, srcparser, xmlout, xmltranslationout, markdownout
 
 import re
 import json
@@ -84,6 +84,12 @@ def main():
                         metavar="FILENAME",
                         help="Create Markdown file"
                              " (default FILENAME: parameters.md)")
+    parser.add_argument("-t", "--translation_xml",
+                        nargs='?',
+                        const="parameters_en.md",
+                        metavar="FILENAME",
+                        help="Create translation string file"
+                             " (default FILENAME: parameters_en.md)")
     parser.add_argument('-v', '--verbose',
                         action='store_true',
                         help="verbose output")
@@ -95,7 +101,7 @@ def main():
     args = parser.parse_args()
 
     # Check for valid command
-    if not (args.xml or args.markdown):
+    if not (args.xml or args.markdown or args.translation_xml):
         print("Error: You need to specify at least one output method!\n")
         parser.print_usage()
         sys.exit(1)
@@ -136,6 +142,15 @@ def main():
         out = xmlout.XMLOutput(param_groups, args.board,
                                os.path.join(cur_dir, args.inject_xml))
         out.Save(args.xml)
+
+    # Output to XML translation string file file
+    if args.translation_xml:
+        if args.verbose:
+            print("Creating translation string XML file " + args.translation_xml)
+        cur_dir = os.path.dirname(os.path.realpath(__file__))
+        out = xmltranslationout.XMLOutput(param_groups, args.board,
+                               os.path.join(cur_dir, args.inject_xml))
+        out.Save(args.translation_xml)
 
     # Output to Markdown/HTML tables
     if args.markdown:

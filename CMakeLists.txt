@@ -494,6 +494,10 @@ add_custom_target(metadata_parameters
 		--src-path `find ${PX4_SOURCE_DIR}/src -maxdepth 4 -type d`
 		--inject-xml ${PX4_SOURCE_DIR}/src/lib/parameters/parameters_injected.xml
 		--xml ${PX4_BINARY_DIR}/docs/parameters.xml
+	COMMAND ${PYTHON_EXECUTABLE} ${PX4_SOURCE_DIR}/src/lib/parameters/px_process_params.py
+		--src-path `find ${PX4_SOURCE_DIR}/src -maxdepth 4 -type d`
+		--inject-xml ${PX4_SOURCE_DIR}/src/lib/parameters/parameters_injected.xml
+		--translation_xml ${PX4_BINARY_DIR}/docs/parameters_en.xml
 	COMMENT "Generating full parameter metadata (markdown and xml)"
 	USES_TERMINAL
 )
