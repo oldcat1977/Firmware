@@ -121,8 +121,7 @@ private:
 
 	template<typename Param>
 	void update_mag_bias(Param &mag_bias_param, int axis_index);
-	template<typename Param>
-	bool update_mag_decl(Param &mag_decl_param);
+
 	bool publish_attitude(const sensor_combined_s &sensors, const hrt_abstime &now);
 	bool publish_wind_estimate(const hrt_abstime &timestamp);
 
@@ -673,21 +672,6 @@ void Ekf2::update_mag_bias(Param &mag_bias_param, int axis_index)
 
 		_valid_cal_available[axis_index] = false;
 	}
-}
-
-template<typename Param>
-bool Ekf2::update_mag_decl(Param &mag_decl_param)
-{
-	// update stored declination value
-	float declination_deg;
-
-	if (_ekf.get_mag_decl_deg(&declination_deg)) {
-		mag_decl_param.set(declination_deg);
-		mag_decl_param.commit_no_notification();
-		return true;
-	}
-
-	return false;
 }
 
 void Ekf2::run()
@@ -1587,7 +1571,11 @@ void Ekf2::run()
 			publish_wind_estimate(now);
 
 			if (!_mag_decl_saved && (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY)) {
-				_mag_decl_saved = update_mag_decl(_mag_declination_deg);
+
+				if (_ekf.save_mag_declination()) {
+					_mag_declination_deg.commit_no_notification();
+					_mag_decl_saved = true;
+				}
 			}
 
 			{
