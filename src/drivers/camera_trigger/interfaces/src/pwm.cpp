@@ -49,7 +49,7 @@ void CameraInterfacePWM::setup()
 	// Set neutral pulsewidths
 	for (unsigned i = 0; i < arraySize(_pins); i++) {
 		if (_pins[i] >= 0) {
-			up_pwm_trigger_set(_pins[i], math::constrain(pwm_camera_neutral, pwm_camera_neutral, 2000));
+			up_pwm_trigger_set(_pins[i], math::constrain(pwm_camera_neutral, 0, 2000));
 		}
 	}
 

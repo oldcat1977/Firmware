@@ -149,6 +149,7 @@ PARAM_DEFINE_FLOAT(TRIG_DISTANCE, 25.0f);
  * @max 2000
  * @unit us
  * @group Camera trigger
+ * @reboot_required true
  */
 PARAM_DEFINE_INT32(TRIG_PWM_SHOOT, 1900);
 
