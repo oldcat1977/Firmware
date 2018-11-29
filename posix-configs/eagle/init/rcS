@@ -5,6 +5,7 @@
 . px4-alias.sh
 
 uorb start
+wq_manager start
 muorb start
 
 # We need to wait until the DSP side is ready before

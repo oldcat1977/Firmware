@@ -5,6 +5,8 @@
 
 uorb start
 
+wq_manager start
+
 param load
 param set SYS_RESTART_TYPE 0
 
@@ -25,7 +27,7 @@ mavlink start -x -u 14556 -r 2000000
 mavlink boot_complete
 
 @cmd_name@ start
-sleep 1
+sleep 3
 @cmd_name@ start
 sleep 1
 @cmd_name@ stop

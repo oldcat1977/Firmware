@@ -54,6 +54,9 @@ fi
 
 
 uorb start
+
+wq_manager start
+
 if [ -f eeprom/parameters ]
 then
 	param load

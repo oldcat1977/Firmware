@@ -79,6 +79,8 @@ ver all
 #
 uorb start
 
+wq_manager start
+
 #
 # Try to mount the microSD card.
 #

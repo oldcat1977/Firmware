@@ -43,7 +43,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-
 /**
  * Object metadata.
  */
@@ -226,6 +225,11 @@ extern int	orb_stat(int handle, uint64_t *time) __EXPORT;
  * @see uORB::Manager::orb_exists()
  */
 extern int	orb_exists(const struct orb_metadata *meta, int instance) __EXPORT;
+
+/**
+ * @see uORB::Manager::orb_register_work_callback()
+ */
+extern int orb_register_work_callback(const struct orb_metadata *meta, int instance, void *item) __EXPORT;
 
 /**
  * Get the number of published instances of a topic group

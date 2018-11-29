@@ -1,6 +1,7 @@
+
 /****************************************************************************
  *
- *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2015 Mark Charlebois. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,67 +33,59 @@
  ****************************************************************************/
 
 /**
- * @file List.hpp
+ * @file wqueue_example.cpp
+ * Example for Linux
  *
- * A linked list.
+ * @author Mark Charlebois <charlebm@gmail.com>
  */
 
-#pragma once
+#include "wqueue_test.h"
 
-template<class T>
-class ListNode
+#include <drivers/drv_hrt.h>
+#include <px4_log.h>
+#include <px4_time.h>
+
+#include <unistd.h>
+#include <stdio.h>
+#include <inttypes.h>
+
+using namespace px4;
+
+AppState WQueueTest::appState;
+
+void WQueueTest::Run()
 {
-public:
+	//PX4_INFO("iter: %d elapsed: %" PRId64 " us", _iter, hrt_elapsed_time(&_qtime));
 
-	void setSibling(T sibling) { _sibling = sibling; }
-	const T getSibling() const { return _sibling; }
+	if (_iter > 10000) {
+		appState.requestExit();
 
-protected:
-
-	T _sibling{nullptr};
-
-};
-
-template<class T>
-class List
-{
-public:
-
-	void add(T newNode)
-	{
-		newNode->setSibling(getHead());
-		_head = newNode;
+	} else {
+		ScheduleNow();
 	}
 
-	bool remove(T removeNode)
-	{
-		// base case
-		if (removeNode == _head) {
-			_head = nullptr;
-			return true;
-		}
+	_iter++;
+}
 
-		for (T node = _head; node != nullptr; node = node->getSibling()) {
-			// is sibling the node to remove?
-			if (node->getSibling() == removeNode) {
-				// replace sibling
-				if (node->getSibling() != nullptr) {
-					node->setSibling(node->getSibling()->getSibling());
+int WQueueTest::main()
+{
+	appState.setRunning(true);
 
-				} else {
-					node->setSibling(nullptr);
-				}
+	_iter = 0;
 
-				return true;
-			}
-		}
+	// Put work in the work queue
+	ScheduleNow();
 
-		return false;
+	// Wait for work to finsh
+	while (!appState.exitRequested()) {
+		px4_usleep(5000);
 	}
 
-	const T getHead() const { return _head; }
+	PX4_INFO("WQueueTest finished");
 
-protected:
+	print_status();
 
-	T _head{nullptr};
-};
+	px4_sleep(2);
+
+	return 0;
+}

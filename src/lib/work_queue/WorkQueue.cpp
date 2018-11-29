@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,68 +31,82 @@
  *
  ****************************************************************************/
 
-/**
- * @file List.hpp
- *
- * A linked list.
- */
+#include "WorkQueue.hpp"
+#include "WorkItem.hpp"
 
-#pragma once
+#include <string.h>
 
-template<class T>
-class ListNode
+#include <px4_tasks.h>
+#include <px4_time.h>
+#include <drivers/drv_hrt.h>
+
+namespace px4
 {
-public:
 
-	void setSibling(T sibling) { _sibling = sibling; }
-	const T getSibling() const { return _sibling; }
-
-protected:
-
-	T _sibling{nullptr};
-
-};
-
-template<class T>
-class List
+WorkQueue::WorkQueue(const char *name) :
+	_name(name)
 {
-public:
+#ifndef __PX4_NUTTX
+	px4_sem_init(&_qlock, 0, 1);
+#endif /* __PX4_NUTTX */
 
-	void add(T newNode)
-	{
-		newNode->setSibling(getHead());
-		_head = newNode;
+	px4_sem_init(&_process_lock, 0, 0);
+	px4_sem_setprotocol(&_process_lock, SEM_PRIO_NONE);
+
+	_perf_latency = perf_alloc(PC_ELAPSED, "wq_run_latency");
+}
+
+WorkQueue::~WorkQueue()
+{
+	work_lock();
+	px4_sem_destroy(&_process_lock);
+	work_unlock();
+
+#ifndef __PX4_NUTTX
+	px4_sem_destroy(&_qlock);
+#endif /* __PX4_NUTTX */
+
+	perf_free(_perf_latency);
+}
+
+void WorkQueue::add(WorkItem *item)
+{
+	work_lock();
+	_q.push(item);
+	work_unlock();
+
+	// Wake up the worker thread
+	px4_sem_post(&_process_lock);
+}
+
+void WorkQueue::process()
+{
+	px4_sem_wait(&_process_lock);
+
+	// process queued work
+	work_lock();
+
+	while (!_q.empty()) {
+
+		WorkItem *work = _q.pop();
+
+		work->pre_run(); // perf monitor start
+
+		work_unlock(); // unlock work queue to run (item may requeue itself)
+		perf_set_elapsed(_perf_latency, hrt_elapsed_time(&work->qtime()));
+		work->Run();
+		work_lock(); // re-lock
+
+		work->post_run(); // perf monitor stop
 	}
 
-	bool remove(T removeNode)
-	{
-		// base case
-		if (removeNode == _head) {
-			_head = nullptr;
-			return true;
-		}
+	work_unlock();
+}
 
-		for (T node = _head; node != nullptr; node = node->getSibling()) {
-			// is sibling the node to remove?
-			if (node->getSibling() == removeNode) {
-				// replace sibling
-				if (node->getSibling() != nullptr) {
-					node->setSibling(node->getSibling()->getSibling());
+void WorkQueue::print_status()
+{
+	PX4_INFO("WorkQueue: %s", get_name());
+	perf_print_counter(_perf_latency);
+}
 
-				} else {
-					node->setSibling(nullptr);
-				}
-
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	const T getHead() const { return _head; }
-
-protected:
-
-	T _head{nullptr};
-};
+} // namespace px4

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2019 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,68 +31,40 @@
  *
  ****************************************************************************/
 
-/**
- * @file List.hpp
- *
- * A linked list.
- */
+#include "ScheduledWorkItem.hpp"
 
-#pragma once
-
-template<class T>
-class ListNode
+namespace px4
 {
-public:
 
-	void setSibling(T sibling) { _sibling = sibling; }
-	const T getSibling() const { return _sibling; }
-
-protected:
-
-	T _sibling{nullptr};
-
-};
-
-template<class T>
-class List
+ScheduledWorkItem::~ScheduledWorkItem()
 {
-public:
+	ScheduleClear();
+}
 
-	void add(T newNode)
-	{
-		newNode->setSibling(getHead());
-		_head = newNode;
+void ScheduledWorkItem::schedule_trampoline(void *arg)
+{
+	ScheduledWorkItem *dev = reinterpret_cast<ScheduledWorkItem *>(arg);
+	dev->ScheduleNow();
+}
+
+void ScheduledWorkItem::ScheduleDelayed(uint32_t delay)
+{
+	hrt_call_after(&_call, delay, (hrt_callout)&ScheduledWorkItem::schedule_trampoline, this);
+}
+
+void ScheduledWorkItem::ScheduleOnInterval(uint32_t interval, uint32_t delay)
+{
+	if (interval < 800) {
+		PX4_WARN("requested interval %d, min is 800 us", interval);
+		interval = 800;
 	}
 
-	bool remove(T removeNode)
-	{
-		// base case
-		if (removeNode == _head) {
-			_head = nullptr;
-			return true;
-		}
+	hrt_call_every(&_call, delay, interval, (hrt_callout)&ScheduledWorkItem::schedule_trampoline, this);
+}
 
-		for (T node = _head; node != nullptr; node = node->getSibling()) {
-			// is sibling the node to remove?
-			if (node->getSibling() == removeNode) {
-				// replace sibling
-				if (node->getSibling() != nullptr) {
-					node->setSibling(node->getSibling()->getSibling());
+void ScheduledWorkItem::ScheduleClear()
+{
+	hrt_cancel(&_call);
+}
 
-				} else {
-					node->setSibling(nullptr);
-				}
-
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	const T getHead() const { return _head; }
-
-protected:
-
-	T _head{nullptr};
-};
+} // namespace px4

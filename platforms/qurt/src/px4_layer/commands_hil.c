@@ -43,6 +43,7 @@ const char *get_commands()
 
 	static const char *commands =
 		"uorb start\n"
+		"wq_manager start\n"
 		"param set CAL_GYRO0_ID 2293760\n"
 		"param set CAL_ACC0_ID 1310720\n"
 		"param set CAL_ACC1_ID 1376256\n"
