@@ -43,11 +43,11 @@ px4_add_board(
 		actuators/mkblctrl
 		lights/pca8574
 		actuators/pca9685
-		#pmw3901
+		#flow # all available flow drivers
+		flow/px4flow
 		protocol_splitter
 		pwm_input
 		actuators/pwm_out_sim
-		px4flow
 		actuators/px4fmu
 		actuators/px4io
 		actuators/roboclaw

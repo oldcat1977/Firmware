@@ -35,7 +35,7 @@ px4_add_board(
 		protocol_splitter
 		pwm_input
 		actuators/pwm_out_sim
-		px4flow
+		flow/px4flow
 		actuators/px4fmu
 		rc_input
 		stm32

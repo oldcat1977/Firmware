@@ -41,7 +41,7 @@ px4_add_board(
 		actuators/pca9685
 		#pwm_input # NOT Portable YET drivers
 		actuators/pwm_out_sim
-		px4flow
+		flow/px4flow
 		actuators/px4fmu
 		rc_input
 		actuators/tap_esc

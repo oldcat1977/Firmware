@@ -41,11 +41,10 @@ px4_add_board(
 		lights/oreoled
 		lights/pca8574
 		actuators/pca9685
-		#pmw3901
 		protocol_splitter
 		pwm_input
 		actuators/pwm_out_sim
-		px4flow
+		flow/px4flow
 		actuators/px4fmu
 		actuators/px4io
 		lights/rgbled

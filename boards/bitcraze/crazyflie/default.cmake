@@ -12,7 +12,7 @@ px4_add_board(
 		distance_sensor/vl53lxx
 		gps
 		imu/mpu9250
-		pmw3901
+		flow/pmw3901
 		actuators/px4fmu
 		stm32
 

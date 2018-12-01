@@ -26,7 +26,7 @@ px4_add_board(
 		magnetometer/ist8310
 		protocol_splitter
 		actuators/pwm_out_sim
-		#px4flow
+		#flow/px4flow
 		actuators/px4fmu
 		rc_input
 		stm32
