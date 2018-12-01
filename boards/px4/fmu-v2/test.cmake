@@ -18,6 +18,12 @@ px4_add_board(
 		TEL4:/dev/ttyS3
 
 	DRIVERS
+		#actuators/mkblctrl
+		#actuators/pca9685
+		actuators/pwm_out_sim
+		actuators/px4fmu
+		actuators/px4io
+		#actuators/tap_esc
 		#barometer # all available barometer drivers
 		barometer/ms5611
 		#batt_smbus
@@ -42,18 +48,11 @@ px4_add_board(
 		lights/rgbled
 		#magnetometer # all available magnetometer drivers
 		magnetometer/hmc5883
-		#actuators/mkblctrl
-		#actuators/pca9685
 		#protocol_splitter
 		#pwm_input
-		#actuators/pwm_out_sim
-		flow/px4flow
-		actuators/px4fmu
-		actuators/px4io
 		stm32
 		stm32/adc
 		stm32/tone_alarm
-		#actuators/tap_esc
 		#telemetry # all available telemetry drivers
 		#test_ppm
 		#uavcan

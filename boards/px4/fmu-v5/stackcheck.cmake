@@ -18,43 +18,31 @@ px4_add_board(
 		TEL4:/dev/ttyS3
 
 	DRIVERS
+		actuators # all available actuator drivers
 		barometer # all available barometer drivers
 		batt_smbus
-		lights/blinkm
 		camera_trigger
 		differential_pressure # all available differential pressure drivers
 		distance_sensor # all available distance sensor drivers
+		flow # all available flow drivers
 		gps
 		#heater
-		#imu # all available imu drivers
 		imu/adis16448
-		imu/bmi055
-		#imu/bmi160
+		#imu # all available imu drivers
 		#imu/bma180
+		#imu/bmi055
+		#imu/bmi160
 		imu/mpu6000
 		#imu/mpu9250
 		irlock
+		lights # all available lights
 		magnetometer # all available magnetometer drivers
-		#actuators/md25
-		actuators/mkblctrl
-		lights/oreoled
-		lights/pca8574
-		actuators/pca9685
-		flow # all available flow drivers
-		protocol_splitter
+		#protocol_splitter
 		pwm_input
-		actuators/pwm_out_sim
-		actuators/px4fmu
-		actuators/px4io
 		rc_input
-		lights/rgbled
-		lights/rgbled_ncp5623c
-		lights/rgbled_pwm
-		actuators/roboclaw
 		stm32
 		stm32/adc
 		stm32/tone_alarm
-		actuators/tap_esc
 		telemetry # all available telemetry drivers
 		test_ppm
 		#uavcan

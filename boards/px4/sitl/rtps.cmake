@@ -7,6 +7,7 @@ px4_add_board(
 	TESTING
 
 	DRIVERS
+		actuators/pwm_out_sim
 		#barometer # all available barometer drivers
 		batt_smbus
 		camera_trigger
@@ -15,9 +16,8 @@ px4_add_board(
 		gps
 		#imu # all available imu drivers
 		#magnetometer # all available magnetometer drivers
-		#protocol_splitter
-		actuators/pwm_out_sim
 		#telemetry # all available telemetry drivers
+		tone_alarm_sim
 		#uavcan
 
 	MODULES
@@ -50,7 +50,6 @@ px4_add_board(
 		wind_estimator
 
 	SYSTEMCMDS
-		#bl_update
 		#config
 		#dumpfile
 		dyn

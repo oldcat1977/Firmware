@@ -30,13 +30,18 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-px4_add_module(
-	MODULE drivers__snapdragon_pwm_out
-	MAIN snapdragon_pwm_out
-	COMPILE_FLAGS
-	SRCS
-		snapdragon_pwm_out.cpp
-	DEPENDS
-		mixer
-		pwm_limit
-	)
+
+if(${PX4_PLATFORM} MATCHES "qurt")
+
+	px4_add_module(
+		MODULE drivers__snapdragon_pwm_out
+		MAIN snapdragon_pwm_out
+		COMPILE_FLAGS
+		SRCS
+			snapdragon_pwm_out.cpp
+		DEPENDS
+			mixer
+			pwm_limit
+		)
+
+endif()

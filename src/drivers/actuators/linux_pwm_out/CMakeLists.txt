@@ -31,17 +31,20 @@
 #
 ############################################################################
 
-px4_add_module(
-	MODULE drivers__linux_pwm_out
-	MAIN linux_pwm_out
-	COMPILE_FLAGS
-	SRCS
-		PCA9685.cpp
-		navio_sysfs.cpp
-		linux_pwm_out.cpp
-		ocpoc_mmap.cpp
-		bbblue_pwm_rc.cpp
-	DEPENDS
-		pwm_limit
-	)
+if(${PX4_PLATFORM} MATCHES "posix")
 
+	px4_add_module(
+		MODULE drivers__linux_pwm_out
+		MAIN linux_pwm_out
+		COMPILE_FLAGS
+		SRCS
+			PCA9685.cpp
+			navio_sysfs.cpp
+			linux_pwm_out.cpp
+			ocpoc_mmap.cpp
+			bbblue_pwm_rc.cpp
+		DEPENDS
+			pwm_limit
+		)
+
+endif()

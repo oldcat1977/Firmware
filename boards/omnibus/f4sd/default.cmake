@@ -12,12 +12,17 @@ px4_add_board(
 		URT6:/dev/ttyS2
 
 	DRIVERS
+		#actuators/mkblctrl
+		#actuators/pca9685
+		#actuators/pwm_out_sim
+		actuators/px4fmu
 		#barometer # all available barometer drivers
 		barometer/bmp280
 		#batt_smbus
 		#camera_trigger
 		#differential_pressure # all available differential pressure drivers
 		#distance_sensor # all available distance sensor drivers
+		#flow/px4flow
 		gps
 		#heater
 		#imu # all available imu drivers
@@ -28,17 +33,11 @@ px4_add_board(
 		lights/rgbled
 		#magnetometer # all available magnetometer drivers
 		magnetometer/hmc5883
-		#actuators/mkblctrl
-		#actuators/pca9685
 		#pwm_input
-		#actuators/pwm_out_sim
-		#flow/px4flow
-		actuators/px4fmu
 		rc_input
 		stm32
 		stm32/adc
 		#stm32/tone_alarm
-		#actuators/tap_esc
 		#telemetry # all available telemetry drivers
 		telemetry/frsky_telemetry
 		#test_ppm

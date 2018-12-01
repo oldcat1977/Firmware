@@ -13,22 +13,22 @@ px4_add_board(
 		TEL2:/dev/ttyS1
 
 	DRIVERS
+		actuators/pwm_out_sim
+		actuators/px4fmu
+		actuators/tap_esc
 		barometer/ms5611
 		#camera_trigger
 		#differential_pressure # all available differential pressure drivers
 		distance_sensor
+		#flow/px4flow
 		gps
-		#irlock
 		imu/mpu9250
+		#irlock
 		#magnetometer # all available magnetometer drivers
 		magnetometer/hmc5883
 		magnetometer/ist8310
-		actuators/pwm_out_sim
-		#flow/px4flow
-		actuators/px4fmu
 		rc_input
 		stm32
-		actuators/tap_esc
 		#telemetry # all available telemetry drivers
 		#uavcan
 

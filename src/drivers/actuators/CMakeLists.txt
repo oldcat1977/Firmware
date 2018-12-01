@@ -32,7 +32,7 @@
 ############################################################################
 
 add_subdirectory(linux_pwm_out)
-add_subdirectory(md25)
+#add_subdirectory(md25) # needs cleanup
 add_subdirectory(mkblctrl)
 add_subdirectory(pca9685)
 add_subdirectory(pwm_out_sim)
