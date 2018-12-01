@@ -59,7 +59,6 @@ px4_add_board(
 		pwm_out_sim
 		qshell/posix
 		#telemetry # all available telemetry drivers
-		vmount
 
 	MODULES
 		muorb/krait
@@ -89,6 +88,7 @@ px4_add_board(
 		sensors
 		simulator
 		#uavcan
+		vmount
 		vtol_att_control
 		wind_estimator
 
