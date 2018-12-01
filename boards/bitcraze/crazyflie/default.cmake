@@ -39,7 +39,6 @@ px4_add_board(
 		navigator
 		position_estimator_inav
 		sensors
-		syslink
 		#uavcan
 		#vtol_att_control
 		wind_estimator
