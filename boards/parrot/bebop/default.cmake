@@ -9,7 +9,7 @@ px4_add_board(
 	DRIVERS
 		gps
 		linux_sbus
-		pwm_out_sim
+		actuators/pwm_out_sim
 
 	DF_DRIVERS # NOTE: DriverFramework is migrating to intree PX4 drivers
 		ms5607

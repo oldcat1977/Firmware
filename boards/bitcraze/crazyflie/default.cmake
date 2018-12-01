@@ -13,7 +13,7 @@ px4_add_board(
 		gps
 		imu/mpu9250
 		pmw3901
-		px4fmu
+		actuators/px4fmu
 		stm32
 
 	MODULES

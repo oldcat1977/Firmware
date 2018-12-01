@@ -32,17 +32,17 @@ px4_add_board(
 		lights/oreoled
 		lights/rgbled
 		magnetometer # all available magnetometer drivers
-		mkblctrl
-		pca9685
+		actuators/mkblctrl
+		actuators/pca9685
 		#pwm_input
-		pwm_out_sim
+		actuators/pwm_out_sim
 		px4flow
-		px4fmu
+		actuators/px4fmu
 		#rc_input
 		samv7
 		#samv7/adc # WIP
 		samv7/tone_alarm
-		tap_esc
+		actuators/tap_esc
 		telemetry # all available telemetry drivers
 		#test_ppm
 		#uavcan

@@ -35,27 +35,27 @@ px4_add_board(
 		#imu/mpu9250
 		irlock
 		magnetometer # all available magnetometer drivers
-		#md25
-		mkblctrl
+		#actuators/md25
+		actuators/mkblctrl
 		lights/oreoled
-		pca8574
-		pca9685
+		lights/pca8574
+		actuators/pca9685
 		pmw3901
 		protocol_splitter
 		pwm_input
-		pwm_out_sim
+		actuators/pwm_out_sim
 		px4flow
-		px4fmu
-		px4io
+		actuators/px4fmu
+		actuators/px4io
 		rc_input
 		lights/rgbled
 		lights/rgbled_ncp5623c
 		lights/rgbled_pwm
-		roboclaw
+		actuators/roboclaw
 		stm32
 		stm32/adc
 		stm32/tone_alarm
-		tap_esc
+		actuators/tap_esc
 		telemetry # all available telemetry drivers
 		test_ppm
 		#uavcan

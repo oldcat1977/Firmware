@@ -27,20 +27,20 @@ px4_add_board(
 		imu # all available imu drivers
 		irlock
 		magnetometer # all available magnetometer drivers
-		mkblctrl
+		actuators/mkblctrl
 		lights/oreoled
-		pca9685
+		actuators/pca9685
 		pwm_input
-		pwm_out_sim
+		actuators/pwm_out_sim
 		px4flow
-		px4fmu
+		actuators/px4fmu
 		rc_input
 		lights/rgbled
 		lights/rgbled_ncp5623c
 		stm32
 		stm32/adc
 		stm32/tone_alarm
-		tap_esc
+		actuators/tap_esc
 		telemetry # all available telemetry drivers
 		test_ppm
 		#uavcan

@@ -23,12 +23,12 @@ px4_add_board(
 		#magnetometer # all available magnetometer drivers
 		magnetometer/hmc5883
 		magnetometer/ist8310
-		pwm_out_sim
+		actuators/pwm_out_sim
 		#px4flow
-		px4fmu
+		actuators/px4fmu
 		rc_input
 		stm32
-		tap_esc
+		actuators/tap_esc
 		#telemetry # all available telemetry drivers
 		#uavcan
 

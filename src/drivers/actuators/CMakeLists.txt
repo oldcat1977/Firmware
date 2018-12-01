@@ -31,9 +31,13 @@
 #
 ############################################################################
 
-add_subdirectory(blinkm)
-add_subdirectory(oreoled)
-add_subdirectory(pca8574)
-add_subdirectory(rgbled)
-add_subdirectory(rgbled_ncp5623c)
-add_subdirectory(rgbled_pwm)
+add_subdirectory(linux_pwm_out)
+add_subdirectory(md25)
+add_subdirectory(mkblctrl)
+add_subdirectory(pca9685)
+add_subdirectory(pwm_out_sim)
+add_subdirectory(px4fmu)
+add_subdirectory(px4io)
+add_subdirectory(roboclaw)
+add_subdirectory(snapdragon_pwm_out)
+add_subdirectory(tap_esc)

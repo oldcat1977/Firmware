@@ -28,17 +28,17 @@ px4_add_board(
 		lights/rgbled
 		#magnetometer # all available magnetometer drivers
 		magnetometer/hmc5883
-		#mkblctrl
-		#pca9685
+		#actuators/mkblctrl
+		#actuators/pca9685
 		#pwm_input
-		#pwm_out_sim
+		#actuators/pwm_out_sim
 		px4flow
-		px4fmu
+		actuators/px4fmu
 		rc_input
 		stm32
 		stm32/adc
 		#stm32/tone_alarm
-		#tap_esc
+		#actuators/tap_esc
 		#telemetry # all available telemetry drivers
 		telemetry/frsky_telemetry
 		#test_ppm

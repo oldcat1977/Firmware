@@ -20,7 +20,7 @@ px4_add_board(
 		linux_pwm_out
 		linux_sbus
 		#magnetometer # all available magnetometer drivers
-		pwm_out_sim
+		actuators/pwm_out_sim
 		#telemetry # all available telemetry drivers
 
 	DF_DRIVERS # NOTE: DriverFramework is migrating to intree PX4 drivers

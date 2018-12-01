@@ -37,14 +37,14 @@ px4_add_board(
 		lights/rgbled
 		lights/rgbled_pwm
 		magnetometer # all available magnetometer drivers
-		mkblctrl
-		pca9685
+		actuators/mkblctrl
+		actuators/pca9685
 		#pwm_input # NOT Portable YET drivers
-		pwm_out_sim
+		actuators/pwm_out_sim
 		px4flow
-		px4fmu
+		actuators/px4fmu
 		rc_input
-		tap_esc
+		actuators/tap_esc
 		telemetry # all available telemetry drivers
 		#test_ppm # NOT Portable YET
 

@@ -30,18 +30,18 @@ px4_add_board(
 		lights/rgbled
 		lights/rgbled_ncp5623c
 		magnetometer # all available magnetometer drivers
-		mkblctrl
-		pca9685
+		actuators/mkblctrl
+		actuators/pca9685
 		protocol_splitter
 		pwm_input
-		pwm_out_sim
+		actuators/pwm_out_sim
 		px4flow
-		px4fmu
+		actuators/px4fmu
 		rc_input
 		stm32
 		stm32/adc
 		stm32/tone_alarm
-		tap_esc
+		actuators/tap_esc
 		telemetry # all available telemetry drivers
 		test_ppm
 		uavcan

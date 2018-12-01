@@ -16,7 +16,7 @@ px4_add_board(
 		#imu # all available imu drivers
 		#magnetometer # all available magnetometer drivers
 		#protocol_splitter
-		pwm_out_sim
+		actuators/pwm_out_sim
 		#telemetry # all available telemetry drivers
 		#uavcan
 
