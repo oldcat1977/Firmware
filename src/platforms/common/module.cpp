@@ -75,21 +75,78 @@ bool module_running(const char *name)
 	return false;
 }
 
+/**
+ * @brief Waits until _object is initialized, (from the new thread). This can be called from task_spawn().
+ * @return Returns 0 iff successful, -1 on timeout or otherwise.
+ */
+int module_wait_until_running(const char *name)
+{
+	int i = 0;
+
+	ModuleBaseInterface *object = nullptr;
+
+	do {
+		object = get_module_instance(name);
+
+		/* Wait up to 1s. */
+		usleep(2500);
+
+	} while (!object && ++i < 400);
+
+	if (i == 400) {
+		PX4_ERR("Timed out while waiting for thread to start");
+		return -1;
+	}
+
+	return 0;
+}
+
 int module_stop(const char *name)
 {
 	int ret = 0;
-	//lock_module();
+	ModuleBaseInterface::lock_module();
 
 	if (module_running(name)) {
 
-		ModuleBaseInterface *module = get_module_instance(name);
+		ModuleBaseInterface *object = get_module_instance(name);
 
-		if (module) {
-			module->request_stop();
+		if (object) {
+
+			object->request_stop();
+
+			unsigned int i = 0;
+
+			do {
+				ModuleBaseInterface::unlock_module();
+				usleep(20000); // 20 ms
+				ModuleBaseInterface::lock_module();
+
+				if (++i > 100 && object->task_id() != -1) { // wait at most 2 sec
+					if (object->task_id() != task_id_is_work_queue) {
+						px4_task_delete(object->task_id());
+					}
+
+					if (object) {
+						px4_modules_list.remove(object);
+						delete object;
+					}
+
+					ret = -1;
+					break;
+				}
+			} while (object->task_id() != -1);
+
+		} else {
+			// In the very unlikely event that can only happen on work queues,
+			// if the starting thread does not wait for the work queue to initialize,
+			// and inside the work queue, the allocation of _object fails
+			// and exit_and_cleanup() is not called, set the _task_id as invalid.
+
+			//_task_id = -1;
 		}
 	}
 
-	//unlock_module();
+	ModuleBaseInterface::unlock_module();
 	return ret;
 }
 
@@ -115,20 +172,18 @@ void module_exit_and_cleanup(const char *name)
 int module_status(const char *name)
 {
 	int ret = -1;
-	//lock_module();
+	ModuleBaseInterface::lock_module();
 
-	if (module_running(name)) {
-		ModuleBaseInterface *module = get_module_instance(name);
+	ModuleBaseInterface *object = get_module_instance(name);
 
-		if (module) {
-			ret = module->print_status();
-		}
+	if (module_running(name) && object) {
+		ret = object->print_status();
 
 	} else {
 		PX4_INFO("not running");
 	}
 
-	//unlock_module();
+	ModuleBaseInterface::unlock_module();
 	return ret;
 }
 

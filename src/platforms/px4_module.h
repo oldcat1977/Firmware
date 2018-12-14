@@ -51,6 +51,9 @@
 
 #include <cstring>
 
+/** @var task_id_is_work_queue Value to indicate if the task runs on the work queue. */
+static constexpr const int task_id_is_work_queue = -2;
+
 /**
  * @brief This mutex protects against race conditions during startup & shutdown of modules.
  *        There could be one mutex per module instantiation, but to reduce the memory footprint
@@ -96,13 +99,15 @@ public:
 	 */
 	static void unlock_module() { pthread_mutex_unlock(&px4_modules_mutex); }
 
-protected:
+	virtual int task_id() const { return _task_id; }
 
 	/**
 	 * @brief Main loop method for modules running in their own thread. Called from run_trampoline().
 	 *        This method must return when should_exit() returns true.
 	 */
 	virtual void run() {};
+
+protected:
 
 	/**
 	 * @brief Checks if the module should stop (used within the module thread).
@@ -123,6 +128,7 @@ bool module_running(const char *name);
 int module_stop(const char *name);
 int module_status(const char *name);
 void module_exit_and_cleanup(const char *name);
+int module_wait_until_running(const char *name);
 
 /**
  * @class ModuleBase
@@ -199,6 +205,7 @@ public:
 		    strcmp(argv[1], "help")  == 0 ||
 		    strcmp(argv[1], "info")  == 0 ||
 		    strcmp(argv[1], "usage") == 0) {
+
 			return T::print_usage();
 		}
 
@@ -208,18 +215,40 @@ public:
 		}
 
 		if (strcmp(argv[1], "status") == 0) {
-			return status_command();
+			return module_status(get_name_static());
 		}
 
 		if (strcmp(argv[1], "stop") == 0) {
 			return stop_command();
 		}
 
-		ModuleBaseInterface::lock_module(); // Lock here, as the method could access _object.
+		lock_module(); // Lock here, as the method could access _object.
 		int ret = T::custom_command(argc - 1, argv + 1);
-		ModuleBaseInterface::unlock_module();
+		unlock_module();
 
 		return ret;
+	}
+
+	static int task_spawn(int argc, char *argv[])
+	{
+		// call px4_task_spawn_cmd() with &run_trampoline as startup method
+		// optional: wait until _object is not null, which means the task got initialized (use a timeout)
+		// set _task_id and return 0
+		// on error return != 0 (and _task_id must be -1)
+
+		px4_task_t task_id = px4_task_spawn_cmd(MODULE_NAME,
+					      SCHED_DEFAULT,
+					      SCHED_PRIORITY_ESTIMATOR, // TODO: PRIORITY
+					      6600, // TODO: STACK_THREAD
+					      (px4_main_t)&run_trampoline,
+					      (char *const *)argv);
+
+		if (task_id < 0) {
+			task_id = -1;
+			return -errno;
+		}
+
+		return 0;
 	}
 
 	/**
@@ -241,19 +270,17 @@ public:
 		argc -= 1;
 		argv += 1;
 #endif
+		// TODO: pass argc, argc, inherit constructor?
 
-		ModuleBaseInterface *object = T::instantiate(argc, argv);
+		T object(); // TODO: review ekf2 argc, argv
 
-		if (object != nullptr) {
+		lock_module();
+		px4_modules_list.add((ModuleBaseInterface*)&object);
+		unlock_module();
 
-			px4_modules_list.add(object);
-			T *module = (T *)object;
-			module->run();
-
-		} else {
-			PX4_ERR("failed to instantiate object");
-			ret = -1;
-		}
+		//while (!should_exit()) {
+			//object.run();
+		//}
 
 		exit_and_cleanup();
 
@@ -270,7 +297,7 @@ public:
 	static int start_command_base(int argc, char *argv[])
 	{
 		int ret = 0;
-		ModuleBaseInterface::lock_module();
+		lock_module();
 
 		if (is_running()) {
 			ret = -1;
@@ -284,7 +311,7 @@ public:
 			}
 		}
 
-		ModuleBaseInterface::unlock_module();
+		unlock_module();
 		return ret;
 	}
 
@@ -293,82 +320,13 @@ public:
 	 *        and waits for the task to complete.
 	 * @return Returns 0 iff successful, -1 otherwise.
 	 */
-	static int stop_command()
-	{
-		int ret = 0;
-		ModuleBaseInterface::lock_module();
-
-		if (is_running()) {
-			if (_object) {
-				T *object = (T *)_object;
-				object->request_stop();
-
-				unsigned int i = 0;
-
-				do {
-					ModuleBaseInterface::unlock_module();
-					usleep(20000); // 20 ms
-					ModuleBaseInterface::lock_module();
-
-					if (++i > 100 && _task_id != -1) { // wait at most 2 sec
-						if (_task_id != task_id_is_work_queue) {
-							px4_task_delete(_task_id);
-						}
-
-						_task_id = -1;
-
-						if (_object) {
-							delete _object;
-							_object = nullptr;
-						}
-
-						ret = -1;
-						break;
-					}
-				} while (_task_id != -1);
-
-			} else {
-				// In the very unlikely event that can only happen on work queues,
-				// if the starting thread does not wait for the work queue to initialize,
-				// and inside the work queue, the allocation of _object fails
-				// and exit_and_cleanup() is not called, set the _task_id as invalid.
-				_task_id = -1;
-			}
-		}
-
-		ModuleBaseInterface::unlock_module();
-		return ret;
-	}
-
-	/**
-	 * @brief Handle 'command status': check if running and call print_status() if it is
-	 * @return Returns 0 iff successful, -1 otherwise.
-	 */
-	static int status_command()
-	{
-		int ret = -1;
-		ModuleBaseInterface::lock_module();
-
-		if (is_running() && _object) {
-			T *object = (T *)_object;
-			ret = object->print_status();
-
-		} else {
-			PX4_INFO("not running");
-		}
-
-		ModuleBaseInterface::unlock_module();
-		return ret;
-	}
+	static int stop_command() { return module_stop(get_name_static()); }
 
 	/**
 	 * @brief Returns the status of the module.
 	 * @return Returns true if the module is running, false otherwise.
 	 */
-	static bool is_running()
-	{
-		return _task_id != -1;
-	}
+	static bool is_running() { return module_running(get_name_static()); }
 
 protected:
 
@@ -387,31 +345,12 @@ protected:
 	 * @brief Waits until _object is initialized, (from the new thread). This can be called from task_spawn().
 	 * @return Returns 0 iff successful, -1 on timeout or otherwise.
 	 */
-	static int wait_until_running()
-	{
-		int i = 0;
-
-		do {
-			/* Wait up to 1s. */
-			usleep(2500);
-
-		} while (!_object && ++i < 400);
-
-		if (i == 400) {
-			PX4_ERR("Timed out while waiting for thread to start");
-			return -1;
-		}
-
-		return 0;
-	}
+	static int wait_until_running() { return module_wait_until_running(get_name_static()); }
 
 	/**
 	 * @brief Get the module's object instance, (this is null if it's not running).
 	 */
-	static T *get_instance()
-	{
-		return (T *)get_module_instance(get_name_static());
-	}
+	static T *get_instance() { return (T *)get_module_instance(get_name_static()); }
 
 	/**
 	 * @var _object Instance if the module is running.
@@ -421,9 +360,6 @@ protected:
 
 	/** @var _task_id The task handle: -1 = invalid, otherwise task is assumed to be running. */
 	static int _task_id;
-
-	/** @var task_id_is_work_queue Value to indicate if the task runs on the work queue. */
-	static constexpr const int task_id_is_work_queue = -2;
 
 };
 
