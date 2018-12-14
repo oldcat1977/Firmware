@@ -1,7 +1,6 @@
-
 /****************************************************************************
  *
- *   Copyright (C) 2012 PX4 Development Team. All rights reserved.
+ *   Copyright (C) 2015 Mark Charlebois. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,67 +32,26 @@
  ****************************************************************************/
 
 /**
- * @file List.hpp
+ * @file hello_example.h
+ * Example app for Linux
  *
- * A linked list.
+ * @author Mark Charlebois <charlebm@gmail.com>
  */
-
 #pragma once
 
-template<class T>
-class ListNode
+#include <px4_app.h>
+#include <px4_module2.h>
+
+class HelloExample2 : public PX4Module<HelloExample2>
 {
 public:
+	HelloExample2() = default;
 
-	void setSibling(T sibling) { _sibling = sibling; }
-	const T getSibling() const { return _sibling; }
+	~HelloExample2() = default;
 
-protected:
+	void run() override;
 
-	T _sibling{nullptr};
+	//int main();
 
-};
-
-template<class T>
-class List
-{
-public:
-
-	void add(T newNode)
-	{
-		newNode->setSibling(getHead());
-		_head = newNode;
-	}
-
-	bool remove(T removeNode)
-	{
-		// base case
-		if (removeNode == _head) {
-			_head = nullptr;
-			return true;
-		}
-
-		for (T node = _head; node != nullptr; node = node->getSibling()) {
-			// is sibling the node to remove?
-			if (node->getSibling() == removeNode) {
-				// replace sibling
-				if (node->getSibling() != nullptr) {
-					node->setSibling(node->getSibling()->getSibling());
-
-				} else {
-					node->setSibling(nullptr);
-				}
-
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	const T getHead() const { return _head; }
-
-protected:
-
-	T _head{nullptr};
+	//static px4::AppState appState; /* track requests to terminate app */
 };

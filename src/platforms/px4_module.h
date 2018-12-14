@@ -47,6 +47,8 @@
 
 #ifdef __cplusplus
 
+#include <containers/List.hpp>
+
 #include <cstring>
 
 /**
@@ -56,6 +58,71 @@
  *        contention here, as module startup is sequential.
  */
 extern pthread_mutex_t px4_modules_mutex;
+
+class ModuleBaseInterface;
+extern List<ModuleBaseInterface *> px4_modules_list;
+
+class ModuleBaseInterface : public ListNode<ModuleBaseInterface *>
+{
+public:
+	ModuleBaseInterface(const char *name) : _name(name) {}
+	virtual ~ModuleBaseInterface() = default;
+
+	const char *name() const { return _name; }
+
+	/**
+	 * @brief Print the status if the module is running. This can be overridden by the module to provide
+	 * more specific information.
+	 * @return Returns 0 iff successful, -1 otherwise.
+	 */
+	virtual int print_status()
+	{
+		PX4_INFO("running");
+		return 0;
+	}
+
+	/**
+	 * @brief Tells the module to stop (used from outside or inside the module thread).
+	 */
+	void request_stop() { _task_should_exit = true; }
+
+	/**
+	 * @brief lock_module Mutex to lock the module thread.
+	 */
+	static void lock_module() { pthread_mutex_lock(&px4_modules_mutex); }
+
+	/**
+	 * @brief unlock_module Mutex to unlock the module thread.
+	 */
+	static void unlock_module() { pthread_mutex_unlock(&px4_modules_mutex); }
+
+protected:
+
+	/**
+	 * @brief Main loop method for modules running in their own thread. Called from run_trampoline().
+	 *        This method must return when should_exit() returns true.
+	 */
+	virtual void run() {};
+
+	/**
+	 * @brief Checks if the module should stop (used within the module thread).
+	 * @return Returns True iff successful, false otherwise.
+	 */
+	bool should_exit() const { return _task_should_exit; }
+
+	const char *_name;
+
+	bool _task_should_exit{false};
+
+	int _task_id{-1};
+
+};
+
+ModuleBaseInterface *get_module_instance(const char *name);
+bool module_running(const char *name);
+int module_stop(const char *name);
+int module_status(const char *name);
+void module_exit_and_cleanup(const char *name);
 
 /**
  * @class ModuleBase
@@ -110,11 +177,13 @@ extern pthread_mutex_t px4_modules_mutex;
  *      }
  */
 template<class T>
-class ModuleBase
+class ModuleBase : public ModuleBaseInterface
 {
 public:
-	ModuleBase() = default;
-	virtual ~ModuleBase() {}
+	ModuleBase() : ModuleBaseInterface(get_name_static()) {}
+	virtual ~ModuleBase() = default;
+
+	static constexpr const char *get_name_static() { return "MODULE_NAME"; }
 
 	/**
 	 * @brief main Main entry point to the module that should be
@@ -146,9 +215,9 @@ public:
 			return stop_command();
 		}
 
-		lock_module(); // Lock here, as the method could access _object.
+		ModuleBaseInterface::lock_module(); // Lock here, as the method could access _object.
 		int ret = T::custom_command(argc - 1, argv + 1);
-		unlock_module();
+		ModuleBaseInterface::unlock_module();
 
 		return ret;
 	}
@@ -173,11 +242,13 @@ public:
 		argv += 1;
 #endif
 
-		_object = T::instantiate(argc, argv);
+		ModuleBaseInterface *object = T::instantiate(argc, argv);
 
-		if (_object) {
-			T *object = (T *)_object;
-			object->run();
+		if (object != nullptr) {
+
+			px4_modules_list.add(object);
+			T *module = (T *)object;
+			module->run();
 
 		} else {
 			PX4_ERR("failed to instantiate object");
@@ -199,7 +270,7 @@ public:
 	static int start_command_base(int argc, char *argv[])
 	{
 		int ret = 0;
-		lock_module();
+		ModuleBaseInterface::lock_module();
 
 		if (is_running()) {
 			ret = -1;
@@ -213,7 +284,7 @@ public:
 			}
 		}
 
-		unlock_module();
+		ModuleBaseInterface::unlock_module();
 		return ret;
 	}
 
@@ -225,7 +296,7 @@ public:
 	static int stop_command()
 	{
 		int ret = 0;
-		lock_module();
+		ModuleBaseInterface::lock_module();
 
 		if (is_running()) {
 			if (_object) {
@@ -235,9 +306,9 @@ public:
 				unsigned int i = 0;
 
 				do {
-					unlock_module();
+					ModuleBaseInterface::unlock_module();
 					usleep(20000); // 20 ms
-					lock_module();
+					ModuleBaseInterface::lock_module();
 
 					if (++i > 100 && _task_id != -1) { // wait at most 2 sec
 						if (_task_id != task_id_is_work_queue) {
@@ -265,7 +336,7 @@ public:
 			}
 		}
 
-		unlock_module();
+		ModuleBaseInterface::unlock_module();
 		return ret;
 	}
 
@@ -276,7 +347,7 @@ public:
 	static int status_command()
 	{
 		int ret = -1;
-		lock_module();
+		ModuleBaseInterface::lock_module();
 
 		if (is_running() && _object) {
 			T *object = (T *)_object;
@@ -286,27 +357,8 @@ public:
 			PX4_INFO("not running");
 		}
 
-		unlock_module();
+		ModuleBaseInterface::unlock_module();
 		return ret;
-	}
-
-	/**
-	 * @brief Print the status if the module is running. This can be overridden by the module to provide
-	 * more specific information.
-	 * @return Returns 0 iff successful, -1 otherwise.
-	 */
-	virtual int print_status()
-	{
-		PX4_INFO("running");
-		return 0;
-	}
-
-	/**
-	 * @brief Main loop method for modules running in their own thread. Called from run_trampoline().
-	 *        This method must return when should_exit() returns true.
-	 */
-	virtual void run()
-	{
 	}
 
 	/**
@@ -321,42 +373,14 @@ public:
 protected:
 
 	/**
-	 * @brief Tells the module to stop (used from outside or inside the module thread).
-	 */
-	virtual void request_stop()
-	{
-		_task_should_exit = true;
-	}
-
-	/**
-	 * @brief Checks if the module should stop (used within the module thread).
-	 * @return Returns True iff successful, false otherwise.
-	 */
-	bool should_exit() const
-	{
-		return _task_should_exit;
-	}
-
-	/**
 	 * @brief Exits the module and delete the object. Called from within the module's thread.
 	 *        For work queue modules, this needs to be called from the derived class in the
 	 *        cycle method, when should_exit() returns true.
 	 */
 	static void exit_and_cleanup()
 	{
-		// Take the lock here:
-		// - if startup fails and we're faster than the parent thread, it will set
-		//   _task_id and subsequently it will look like the task is running.
-		// - deleting the object must take place inside the lock.
-		lock_module();
-
-		if (_object) {
-			delete _object;
-			_object = nullptr;
-		}
-
+		module_exit_and_cleanup(get_name_static());
 		_task_id = -1; // Signal a potentially waiting thread for the module to exit that it can continue.
-		unlock_module();
 	}
 
 	/**
@@ -386,7 +410,7 @@ protected:
 	 */
 	static T *get_instance()
 	{
-		return (T *)_object;
+		return (T *)get_module_instance(get_name_static());
 	}
 
 	/**
@@ -401,25 +425,6 @@ protected:
 	/** @var task_id_is_work_queue Value to indicate if the task runs on the work queue. */
 	static constexpr const int task_id_is_work_queue = -2;
 
-private:
-	/**
-	 * @brief lock_module Mutex to lock the module thread.
-	 */
-	static void lock_module()
-	{
-		pthread_mutex_lock(&px4_modules_mutex);
-	}
-
-	/**
-	 * @brief unlock_module Mutex to unlock the module thread.
-	 */
-	static void unlock_module()
-	{
-		pthread_mutex_unlock(&px4_modules_mutex);
-	}
-
-	/** @var _task_should_exit Boolean flag to indicate if the task should exit. */
-	volatile bool _task_should_exit = false;
 };
 
 template<class T>

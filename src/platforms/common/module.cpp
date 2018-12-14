@@ -41,6 +41,98 @@
 
 pthread_mutex_t px4_modules_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+List<ModuleBaseInterface *> px4_modules_list;
+
+
+ModuleBaseInterface *get_module_instance(const char *name)
+{
+	// search list
+	for (ModuleBaseInterface *module = px4_modules_list.getHead(); module != nullptr; module = module->getSibling()) {
+		if (strcmp(module->name(), name) == 0) {
+
+			// TODO:
+			// return module->running();
+
+			return module;
+		}
+	}
+
+	return nullptr;
+}
+
+bool module_running(const char *name)
+{
+	// search list
+	ModuleBaseInterface *module = get_module_instance(name);
+
+	if (module != nullptr) {
+		// TODO:
+		// return module->running();
+
+		return true;
+	}
+
+	return false;
+}
+
+int module_stop(const char *name)
+{
+	int ret = 0;
+	//lock_module();
+
+	if (module_running(name)) {
+
+		ModuleBaseInterface *module = get_module_instance(name);
+
+		if (module) {
+			module->request_stop();
+		}
+	}
+
+	//unlock_module();
+	return ret;
+}
+
+void module_exit_and_cleanup(const char *name)
+{
+	// Take the lock here:
+	// - if startup fails and we're faster than the parent thread, it will set
+	//   _task_id and subsequently it will look like the task is running.
+	// - deleting the object must take place inside the lock.
+	ModuleBaseInterface::lock_module();
+
+	ModuleBaseInterface *object = get_module_instance(name);
+
+	if (object) {
+		px4_modules_list.remove(object);
+		delete object;
+	}
+
+	//_task_id = -1; // Signal a potentially waiting thread for the module to exit that it can continue.
+	ModuleBaseInterface::unlock_module();
+}
+
+int module_status(const char *name)
+{
+	int ret = -1;
+	//lock_module();
+
+	if (module_running(name)) {
+		ModuleBaseInterface *module = get_module_instance(name);
+
+		if (module) {
+			ret = module->print_status();
+		}
+
+	} else {
+		PX4_INFO("not running");
+	}
+
+	//unlock_module();
+	return ret;
+}
+
+
 #ifndef __PX4_NUTTX
 
 void PRINT_MODULE_DESCRIPTION(const char *description)
