@@ -394,10 +394,6 @@
 #define GPIO_SPI5_MOSI   GPIO_SPI5_MOSI_1   /* PF9 */
 #define GPIO_SPI5_SCK    GPIO_SPI5_SCK_1    /* PF7 */
 
-#define GPIO_SPI6_MISO   GPIO_SPI6_MISO_1   /* PG12 */
-#define GPIO_SPI6_MOSI   GPIO_SPI6_MOSI_3   /* PB5 */
-#define GPIO_SPI6_SCK    GPIO_SPI6_SCK_1    /* PG13 */
-
 /* I2C
  *
  *   Each I2C is associated with a U[S]ART
@@ -412,7 +408,7 @@
  *
  */
 
-#define GPIO_I2C1_SCL GPIO_I2C1_SCL_2       /* PB8]  */
+#define GPIO_I2C1_SCL GPIO_I2C1_SCL_2       /* PB8  */
 #define GPIO_I2C1_SDA GPIO_I2C1_SDA_2       /* PB9  */
 
 #define GPIO_I2C1_SCL_GPIO                  (GPIO_OUTPUT | GPIO_OPENDRAIN |GPIO_SPEED_50MHz | GPIO_OUTPUT_SET | GPIO_PORTB | GPIO_PIN8)
@@ -446,7 +442,6 @@
  *      SDMMC1_D1                           PC9
  *      SDMMC1_D2                           PC10
  *      SDMMC1_D3                           PC11
- *      GPIO_SDMMC1_NCD                     PG0
  */
 
 /* USB
