@@ -1426,26 +1426,30 @@ void Ekf2::run()
 				float pose_covariance[36];
 				_ekf.get_pose_covariances(pose_covariance);
 
+				float *pos_p = &odom.pose_covariance[0];
+
 				for (unsigned x = 0; x < 6; x++)
-					for (unsigned y = x; y < 6; y++)
-						odom.pose_covariance[x + y] = pose_covariance[x * 6 + y];
-
-
+					for (unsigned y = x; y < 6; y++) {
+						*pos_p++ = pose_covariance[x * 6 + y];
+					}
 
 				// get linear velocity covariance
 				matrix::SquareMatrix<float, 6> twist_cov = matrix::eye<float, 6>();
-				
+
 				// unknown angular velocity covariance matrix
 				float lv_cov[9];
 				_ekf.get_velocity_covariances(lv_cov);
 				matrix::SquareMatrix<float, 3> linvel_cov(lv_cov);
 
 				// parse twist covariance
-				twist_cov.slice<3, 3>(0, 0) = linvel_cov;
+				twist_cov.set(linvel_cov, 0, 0);
+				float *vel_p = &odom.velocity_covariance[0];
 
-				for (unsigned x = 0; x < 6; x++)
-					for (unsigned y = x; y < 6; y++)
-						odom.velocity_covariance[x * 6 + y] = linvel_cov(x,y);
+				for (unsigned x = 0; x < 6; x++) {
+					for (unsigned y = x; y < 6; y++) {
+						*vel_p++ = twist_cov(x, y);
+					}
+				}
 
 				// publish vehicle local position data
 				_vehicle_local_position_pub.update();
@@ -1535,7 +1539,7 @@ void Ekf2::run()
 			status.timestamp = now;
 			_ekf.get_state_delayed(status.states);
 			status.n_states = 24;
-			_ekf.get_covariances(status.covariances);
+			_ekf.get_covariances_diagonal(status.covariances);
 			_ekf.get_gps_check_status(&status.gps_check_fail_flags);
 			// only report enabled GPS check failures (the param indexes are shifted by 1 bit, because they don't include
 			// the GPS Fix bit, which is always checked)
