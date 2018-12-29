@@ -1291,8 +1291,7 @@ void Ekf2::run()
 
 		if (updated) {
 
-			filter_control_status_u control_status;
-			_ekf.get_control_mode(&control_status.value);
+			const filter_control_status_u &control_status = _ekf.get_control_mode();
 
 			// only publish position after successful alignment
 			if (control_status.flags.tilt_align) {
@@ -1308,13 +1307,12 @@ void Ekf2::run()
 				odom.local_frame = odom.LOCAL_FRAME_NED;
 
 				// Position of body origin in local NED frame
-				float position[3];
-				_ekf.get_position(position);
+				const Vector3f position = _ekf.get_position();
 				const float lpos_x_prev = lpos.x;
 				const float lpos_y_prev = lpos.y;
-				lpos.x = (_ekf.local_position_is_valid()) ? position[0] : 0.0f;
-				lpos.y = (_ekf.local_position_is_valid()) ? position[1] : 0.0f;
-				lpos.z = position[2];
+				lpos.x = (_ekf.local_position_is_valid()) ? position(0) : 0.0f;
+				lpos.y = (_ekf.local_position_is_valid()) ? position(1) : 0.0f;
+				lpos.z = position(2);
 
 				// Vehicle odometry position
 				odom.x = lpos.x;
@@ -1322,11 +1320,10 @@ void Ekf2::run()
 				odom.z = lpos.z;
 
 				// Velocity of body origin in local NED frame (m/s)
-				float velocity[3];
-				_ekf.get_velocity(velocity);
-				lpos.vx = velocity[0];
-				lpos.vy = velocity[1];
-				lpos.vz = velocity[2];
+				const Vector3f velocity = _ekf.get_velocity();
+				lpos.vx = velocity(0);
+				lpos.vy = velocity(1);
+				lpos.vz = velocity(2);
 
 				// Vehicle odometry linear velocity
 				odom.vx = lpos.vx;
@@ -1334,14 +1331,13 @@ void Ekf2::run()
 				odom.vz = lpos.vz;
 
 				// vertical position time derivative (m/s)
-				_ekf.get_pos_d_deriv(&lpos.z_deriv);
+				lpos.z_deriv = _ekf.get_pos_d_deriv();
 
 				// Acceleration of body origin in local NED frame
-				float vel_deriv[3];
-				_ekf.get_vel_deriv_ned(vel_deriv);
-				lpos.ax = vel_deriv[0];
-				lpos.ay = vel_deriv[1];
-				lpos.az = vel_deriv[2];
+				const Vector3f &vel_deriv = _ekf.get_vel_deriv_ned();
+				lpos.ax = vel_deriv(0);
+				lpos.ay = vel_deriv(1);
+				lpos.az = vel_deriv(2);
 
 				// TODO: better status reporting
 				lpos.xy_valid = _ekf.local_position_is_valid() && !_preflt_horiz_fail;
@@ -1374,17 +1370,13 @@ void Ekf2::run()
 				q.copyTo(odom.q);
 
 				// Vehicle odometry angular rates
-				float gyro_bias[3];
-				_ekf.get_gyro_bias(gyro_bias);
-				odom.rollspeed = sensors.gyro_rad[0] - gyro_bias[0];
-				odom.pitchspeed = sensors.gyro_rad[1] - gyro_bias[1];
-				odom.yawspeed = sensors.gyro_rad[2] - gyro_bias[2];
+				const Vector3f gyro_bias = _ekf.get_gyro_bias();
+				odom.rollspeed = sensors.gyro_rad[0] - gyro_bias(0);
+				odom.pitchspeed = sensors.gyro_rad[1] - gyro_bias(1);
+				odom.yawspeed = sensors.gyro_rad[2] - gyro_bias(2);
 
 				lpos.dist_bottom_valid = _ekf.get_terrain_valid();
-
-				float terrain_vpos;
-				_ekf.get_terrain_vert_pos(&terrain_vpos);
-				lpos.dist_bottom = terrain_vpos - lpos.z; // Distance to bottom surface (ground) in meters
+				lpos.dist_bottom = _ekf.get_terrain_vert_pos() - lpos.z; // Distance to bottom surface (ground) in meters
 
 				// constrain the distance to ground to _rng_gnd_clearance
 				if (lpos.dist_bottom < _rng_gnd_clearance.get()) {
@@ -1488,7 +1480,7 @@ void Ekf2::run()
 					global_pos.terrain_alt_valid = lpos.dist_bottom_valid;
 
 					if (global_pos.terrain_alt_valid) {
-						global_pos.terrain_alt = lpos.ref_alt - terrain_vpos; // Terrain altitude in m, WGS84
+						global_pos.terrain_alt = lpos.ref_alt - _ekf.get_terrain_vert_pos(); // Terrain altitude in m, WGS84
 
 					} else {
 						global_pos.terrain_alt = 0.0f; // Terrain altitude in m, WGS84
@@ -1507,26 +1499,24 @@ void Ekf2::run()
 				bias.timestamp = now;
 
 				// In-run bias estimates
-				float gyro_bias[3];
-				_ekf.get_gyro_bias(gyro_bias);
-				bias.gyro_x_bias = gyro_bias[0];
-				bias.gyro_y_bias = gyro_bias[1];
-				bias.gyro_z_bias = gyro_bias[2];
+				const Vector3f gyro_bias = _ekf.get_gyro_bias();
+				bias.gyro_x_bias = gyro_bias(0);
+				bias.gyro_y_bias = gyro_bias(1);
+				bias.gyro_z_bias = gyro_bias(2);
 
-				float accel_bias[3];
-				_ekf.get_accel_bias(accel_bias);
-				bias.accel_x_bias = accel_bias[0];
-				bias.accel_y_bias = accel_bias[1];
-				bias.accel_z_bias = accel_bias[2];
+				const Vector3f accel_bias = _ekf.get_accel_bias();
+				bias.accel_x_bias = accel_bias(0);
+				bias.accel_y_bias = accel_bias(1);
+				bias.accel_z_bias = accel_bias(2);
 
 				bias.mag_x_bias = _last_valid_mag_cal[0];
 				bias.mag_y_bias = _last_valid_mag_cal[1];
 				bias.mag_z_bias = _last_valid_mag_cal[2];
 
 				// TODO: remove from sensor_bias?
-				bias.accel_x = sensors.accelerometer_m_s2[0] - accel_bias[0];
-				bias.accel_y = sensors.accelerometer_m_s2[1] - accel_bias[1];
-				bias.accel_z = sensors.accelerometer_m_s2[2] - accel_bias[2];
+				bias.accel_x = sensors.accelerometer_m_s2[0] - accel_bias(0);
+				bias.accel_y = sensors.accelerometer_m_s2[1] - accel_bias(1);
+				bias.accel_z = sensors.accelerometer_m_s2[2] - accel_bias(2);
 
 				if (_sensor_bias_pub == nullptr) {
 					_sensor_bias_pub = orb_advertise(ORB_ID(sensor_bias), &bias);
@@ -1542,12 +1532,15 @@ void Ekf2::run()
 			_ekf.get_state_delayed(status.states);
 			status.n_states = 24;
 			_ekf.get_covariances(status.covariances);
-			_ekf.get_gps_check_status(&status.gps_check_fail_flags);
+			status.gps_check_fail_flags = _ekf.get_gps_check_status();
 			// only report enabled GPS check failures (the param indexes are shifted by 1 bit, because they don't include
 			// the GPS Fix bit, which is always checked)
 			status.gps_check_fail_flags &= ((uint16_t)_params->gps_check_mask << 1) | 1;
 			status.control_mode_flags = control_status.value;
-			_ekf.get_filter_fault_status(&status.filter_fault_flags);
+
+			const fault_status_u &fault_status = _ekf.get_filter_fault_status();
+			status.filter_fault_flags = fault_status.value;
+
 			_ekf.get_innovation_test_status(&status.innovation_check_flags, &status.mag_test_ratio,
 							&status.vel_test_ratio, &status.pos_test_ratio,
 							&status.hgt_test_ratio, &status.tas_test_ratio,
@@ -1555,7 +1548,10 @@ void Ekf2::run()
 
 			status.pos_horiz_accuracy = _vehicle_local_position_pub.get().eph;
 			status.pos_vert_accuracy = _vehicle_local_position_pub.get().epv;
-			_ekf.get_ekf_soln_status(&status.solution_status_flags);
+
+			const ekf_solution_status &solution_status_flags = _ekf.get_ekf_soln_status();
+			status.solution_status_flags = solution_status_flags.value;
+
 			_ekf.get_imu_vibe_metrics(status.vibe);
 			status.time_slip = _last_time_slip_us / 1e6f;
 			status.health_flags = 0.0f; // unused
@@ -1668,26 +1664,26 @@ void Ekf2::run()
 				// publish estimator innovation data
 				ekf2_innovations_s innovations;
 				innovations.timestamp = now;
-				_ekf.get_vel_pos_innov(&innovations.vel_pos_innov[0]);
-				_ekf.get_aux_vel_innov(&innovations.aux_vel_innov[0]);
-				_ekf.get_mag_innov(&innovations.mag_innov[0]);
-				_ekf.get_heading_innov(&innovations.heading_innov);
-				_ekf.get_airspeed_innov(&innovations.airspeed_innov);
-				_ekf.get_beta_innov(&innovations.beta_innov);
-				_ekf.get_flow_innov(&innovations.flow_innov[0]);
-				_ekf.get_hagl_innov(&innovations.hagl_innov);
-				_ekf.get_drag_innov(&innovations.drag_innov[0]);
+				_ekf.get_vel_pos_innov(innovations.vel_pos_innov);
+				_ekf.get_aux_vel_innov(innovations.aux_vel_innov);
+				_ekf.get_mag_innov(innovations.mag_innov);
+				innovations.heading_innov = _ekf.get_heading_innov();
+				innovations.airspeed_innov = _ekf.get_airspeed_innov();
+				innovations.beta_innov = _ekf.get_beta_innov();
+				_ekf.get_flow_innov(innovations.flow_innov);
+				innovations.hagl_innov = _ekf.get_hagl_innov();
+				_ekf.get_drag_innov(innovations.drag_innov);
 
-				_ekf.get_vel_pos_innov_var(&innovations.vel_pos_innov_var[0]);
-				_ekf.get_mag_innov_var(&innovations.mag_innov_var[0]);
-				_ekf.get_heading_innov_var(&innovations.heading_innov_var);
-				_ekf.get_airspeed_innov_var(&innovations.airspeed_innov_var);
-				_ekf.get_beta_innov_var(&innovations.beta_innov_var);
-				_ekf.get_flow_innov_var(&innovations.flow_innov_var[0]);
-				_ekf.get_hagl_innov_var(&innovations.hagl_innov_var);
-				_ekf.get_drag_innov_var(&innovations.drag_innov_var[0]);
+				_ekf.get_vel_pos_innov_var(innovations.vel_pos_innov_var);
+				_ekf.get_mag_innov_var(innovations.mag_innov_var);
+				innovations.heading_innov_var = _ekf.get_heading_innov_var();
+				innovations.airspeed_innov_var = _ekf.get_airspeed_innov_var();
+				innovations.beta_innov_var = _ekf.get_beta_innov_var();
+				_ekf.get_flow_innov_var(innovations.flow_innov_var);
+				innovations.hagl_innov_var = _ekf.get_hagl_innov_var();
+				_ekf.get_drag_innov_var(innovations.drag_innov_var);
 
-				_ekf.get_output_tracking_error(&innovations.output_tracking_error[0]);
+				_ekf.get_output_tracking_error(innovations.output_tracking_error);
 
 				// calculate noise filtered velocity innovations which are used for pre-flight checking
 				if (vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY) {
@@ -1805,11 +1801,10 @@ bool Ekf2::publish_attitude(const sensor_combined_s &sensors, const hrt_abstime 
 		_ekf.get_quat_reset(&att.delta_q_reset[0], &att.quat_reset_counter);
 
 		// In-run bias estimates
-		float gyro_bias[3];
-		_ekf.get_gyro_bias(gyro_bias);
-		att.rollspeed = sensors.gyro_rad[0] - gyro_bias[0];
-		att.pitchspeed = sensors.gyro_rad[1] - gyro_bias[1];
-		att.yawspeed = sensors.gyro_rad[2] - gyro_bias[2];
+		const Vector3f gyro_bias = _ekf.get_gyro_bias();
+		att.rollspeed = sensors.gyro_rad[0] - gyro_bias(0);
+		att.pitchspeed = sensors.gyro_rad[1] - gyro_bias(1);
+		att.yawspeed = sensors.gyro_rad[2] - gyro_bias(2);
 
 		int instance;
 		orb_publish_auto(ORB_ID(vehicle_attitude), &_att_pub, &att, &instance, ORB_PRIO_HIGH);
@@ -1831,19 +1826,16 @@ bool Ekf2::publish_attitude(const sensor_combined_s &sensors, const hrt_abstime 
 bool Ekf2::publish_wind_estimate(const hrt_abstime &timestamp)
 {
 	if (_ekf.get_wind_status()) {
-		float velNE_wind[2];
-		_ekf.get_wind_velocity(velNE_wind);
-
-		float wind_var[2];
-		_ekf.get_wind_velocity_var(wind_var);
+		const Vector2f &velNE_wind = _ekf.get_wind_velocity();
+		const Vector2f wind_var = _ekf.get_wind_velocity_var();
 
 		// Publish wind estimate
 		wind_estimate_s wind_estimate;
 		wind_estimate.timestamp = timestamp;
-		wind_estimate.windspeed_north = velNE_wind[0];
-		wind_estimate.windspeed_east = velNE_wind[1];
-		wind_estimate.variance_north = wind_var[0];
-		wind_estimate.variance_east = wind_var[1];
+		wind_estimate.windspeed_north = velNE_wind(0);
+		wind_estimate.windspeed_east = velNE_wind(1);
+		wind_estimate.variance_north = wind_var(0);
+		wind_estimate.variance_east = wind_var(1);
 
 		int instance;
 		orb_publish_auto(ORB_ID(wind_estimate), &_wind_pub, &wind_estimate, &instance, ORB_PRIO_DEFAULT);
@@ -1860,17 +1852,15 @@ const Vector3f Ekf2::get_vel_body_wind()
 
 	matrix::Quatf q;
 	_ekf.copy_quaternion(q.data());
-	matrix::Dcmf R_to_body(q.inversed());
+
+	const matrix::Dcmf R_to_body(q.inversed());
 
 	// Calculate wind-compensated velocity in body frame
 	// Velocity of body origin in local NED frame (m/s)
-	float velocity[3];
-	_ekf.get_velocity(velocity);
+	const Vector3f velocity = _ekf.get_velocity();
+	const Vector2f &velNE_wind = _ekf.get_wind_velocity();
 
-	float velNE_wind[2];
-	_ekf.get_wind_velocity(velNE_wind);
-
-	Vector3f v_wind_comp = {velocity[0] - velNE_wind[0], velocity[1] - velNE_wind[1], velocity[2]};
+	const Vector3f v_wind_comp{velocity(0) - velNE_wind(0), velocity(1) - velNE_wind(1), velocity(2)};
 
 	return R_to_body * v_wind_comp;
 }
