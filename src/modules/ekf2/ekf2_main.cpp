@@ -1424,10 +1424,11 @@ void Ekf2::run()
 
 				// get pose covariance and copy the URT to the uORB message
 				float *pos_p = &odom.pose_covariance[0];
+				const matrix::SquareMatrix<float, 6> pose_cov = _ekf.pose_covariances();
 
 				for (unsigned x = 0; x < 6; x++) {
 					for (unsigned y = x; y < 6; y++) {
-						*pos_p++ = _ekf.pose_covariances()(x, y);
+						*pos_p++ = pose_cov(x, y);
 					}
 				}
 
@@ -1531,7 +1532,7 @@ void Ekf2::run()
 			status.timestamp = now;
 			_ekf.get_state_delayed(status.states);
 			status.n_states = 24;
-			*status.covariances = (*_ekf.covariances_diagonal().data());
+			_ekf.covariances_diagonal().copyTo(status.covariances);
 			_ekf.get_gps_check_status(&status.gps_check_fail_flags);
 			// only report enabled GPS check failures (the param indexes are shifted by 1 bit, because they don't include
 			// the GPS Fix bit, which is always checked)
