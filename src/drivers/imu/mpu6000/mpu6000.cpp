@@ -94,6 +94,7 @@
 #include <drivers/drv_gyro.h>
 #include <mathlib/math/filter/LowPassFilter2p.hpp>
 #include <lib/conversion/rotation.h>
+#include <lib/work_queue/ScheduledWorkItem.hpp>
 
 #include "mpu6000.h"
 
@@ -129,7 +130,7 @@ enum MPU6000_BUS {
 
 class MPU6000_gyro;
 
-class MPU6000 : public device::CDev
+class MPU6000 : public device::CDev, public px4::ScheduledWorkItem
 {
 public:
 	MPU6000(device::Device *interface, const char *path_accel, const char *path_gyro, enum Rotation rotation,
@@ -169,21 +170,13 @@ protected:
 	virtual ssize_t		gyro_read(struct file *filp, char *buffer, size_t buflen);
 	virtual int		gyro_ioctl(struct file *filp, int cmd, unsigned long arg);
 
+	void Run() override;
+
 private:
 	int 			_device_type;
 	MPU6000_gyro		*_gyro;
 	uint8_t			_product;	/** product code */
 
-#if defined(USE_I2C)
-	/*
-	 * SPI bus based device use hrt
-	 * I2C bus needs to use work queue
-	 */
-	work_s			_work;
-#endif
-	bool 			_use_hrt;
-
-	struct hrt_call		_call;
 	unsigned		_call_interval;
 
 	ringbuffer::RingBuffer	*_accel_reports;
@@ -271,38 +264,7 @@ private:
 	 */
 	bool 		is_mpu_device() { return _device_type == MPU_DEVICE_TYPE_MPU6000; }
 
-
-#if defined(USE_I2C)
-	/**
-	 * When the I2C interfase is on
-	 * Perform a poll cycle; collect from the previous measurement
-	 * and start a new one.
-	 *
-	 * This is the heart of the measurement state machine.  This function
-	 * alternately starts a measurement, or collects the data from the
-	 * previous measurement.
-	 *
-	 * When the interval between measurements is greater than the minimum
-	 * measurement interval, a gap is inserted between collection
-	 * and measurement to provide the most recent measurement possible
-	 * at the next interval.
-	 */
-	void			cycle();
-
-	/**
-	 * Static trampoline from the workq context; because we don't have a
-	 * generic workq wrapper yet.
-	 *
-	 * @param arg		Instance pointer for the driver that is polling.
-	 */
-	static void		cycle_trampoline(void *arg);
-
-	void use_i2c(bool on_true) { _use_hrt = !on_true; }
-
-#endif
-
-	bool is_i2c(void) { return !_use_hrt; }
-
+	bool is_i2c(void) { return _interface->get_device_bus_type() == device::Device::DeviceBusType_I2C; }
 
 	/**
 	 * Static trampoline from the hrt_call context; because we don't have a
@@ -460,17 +422,11 @@ extern "C" { __EXPORT int mpu6000_main(int argc, char *argv[]); }
 MPU6000::MPU6000(device::Device *interface, const char *path_accel, const char *path_gyro, enum Rotation rotation,
 		 int device_type) :
 	CDev("MPU6000", path_accel),
+	ScheduledWorkItem(px4::device_bus_to_wq(interface->get_device_id())),
 	_interface(interface),
 	_device_type(device_type),
 	_gyro(new MPU6000_gyro(this, path_gyro)),
 	_product(0),
-#if defined(USE_I2C)
-	_work {},
-	_use_hrt(false),
-#else
-	_use_hrt(true),
-#endif
-	_call {},
 	_call_interval(0),
 	_accel_reports(nullptr),
 	_accel_scale{},
@@ -565,8 +521,6 @@ MPU6000::MPU6000(device::Device *interface, const char *path_accel, const char *
 	_gyro_scale.y_scale  = 1.0f;
 	_gyro_scale.z_offset = 0;
 	_gyro_scale.z_scale  = 1.0f;
-
-	memset(&_call, 0, sizeof(_call));
 }
 
 MPU6000::~MPU6000()
@@ -1309,10 +1263,6 @@ MPU6000::ioctl(struct file *filp, int cmd, unsigned long arg)
 					  stm32 clock and the mpu6000 clock
 					 */
 
-					if (!is_i2c()) {
-						_call.period = _call_interval - MPU6000_TIMER_REDUCTION;
-					}
-
 					/* if we need to start the poll state machine, do it */
 					if (want_start) {
 						start();
@@ -1473,33 +1423,13 @@ MPU6000::start()
 	_accel_reports->flush();
 	_gyro_reports->flush();
 
-	if (!is_i2c()) {
-		/* start polling at the specified rate */
-		hrt_call_every(&_call,
-			       1000,
-			       _call_interval - MPU6000_TIMER_REDUCTION,
-			       (hrt_callout)&MPU6000::measure_trampoline, this);
-
-	} else {
-#ifdef USE_I2C
-		/* schedule a cycle to start things */
-		work_queue(HPWORK, &_work, (worker_t)&MPU6000::cycle_trampoline, this, 1);
-#endif
-	}
+	ScheduleOnInterval(_call_interval - MPU6000_TIMER_REDUCTION, 1000);
 }
 
 void
 MPU6000::stop()
 {
-	if (!is_i2c()) {
-		hrt_cancel(&_call);
-
-	} else {
-#ifdef USE_I2C
-		_call_interval = 0;
-		work_cancel(HPWORK, &_work);
-#endif
-	}
+	ScheduleClear();
 
 	/* reset internal states */
 	memset(_last_accel, 0, sizeof(_last_accel));
@@ -1514,45 +1444,12 @@ MPU6000::stop()
 	}
 }
 
-#if defined(USE_I2C)
-void
-MPU6000::cycle_trampoline(void *arg)
-{
-	MPU6000 *dev = (MPU6000 *)arg;
-
-	dev->cycle();
-}
 
 void
-MPU6000::cycle()
+MPU6000::Run()
 {
-
-	int ret = measure();
-
-	if (ret != OK) {
-		/* issue a reset command to the sensor */
-		reset();
-		start();
-		return;
-	}
-
-	if (_call_interval != 0) {
-		work_queue(HPWORK,
-			   &_work,
-			   (worker_t)&MPU6000::cycle_trampoline,
-			   this,
-			   USEC2TICK(_call_interval - MPU6000_TIMER_REDUCTION));
-	}
-}
-#endif
-
-void
-MPU6000::measure_trampoline(void *arg)
-{
-	MPU6000 *dev = reinterpret_cast<MPU6000 *>(arg);
-
 	/* make another measurement */
-	dev->measure();
+	measure();
 }
 void
 MPU6000::check_registers(void)
