@@ -44,6 +44,7 @@ px4_add_board(
 		replay
 		sensors
 		simulator
+		vehicle_sensors
 		vmount
 		vtol_att_control
 		wind_estimator

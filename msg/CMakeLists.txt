@@ -41,8 +41,8 @@ set(msg_files
 	battery_status.msg
 	camera_capture.msg
 	camera_trigger.msg
-	collision_report.msg
 	collision_constraints.msg
+	collision_report.msg
 	commander_state.msg
 	cpuload.msg
 	debug_array.msg
@@ -135,6 +135,7 @@ set(msg_files
 	vehicle_local_position_setpoint.msg
 	vehicle_magnetometer.msg
 	vehicle_odometry.msg
+	vehicle_rates.msg
 	vehicle_rates_setpoint.msg
 	vehicle_roi.msg
 	vehicle_status.msg
