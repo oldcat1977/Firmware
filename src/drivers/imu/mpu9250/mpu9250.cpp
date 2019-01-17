@@ -56,6 +56,7 @@
 #include <drivers/drv_mag.h>
 #include <lib/mathlib/math/filter/LowPassFilter2p.hpp>
 #include <lib/conversion/rotation.h>
+#include <uORB/topics/sensor_gyro_control.h>
 
 #include "mag.h"
 #include "accel.h"
@@ -403,6 +404,10 @@ MPU9250::init()
 
 		_gyro->_gyro_topic = orb_advertise_multi(ORB_ID(sensor_gyro), &grp,
 				     &_gyro->_gyro_orb_class_instance, (is_external()) ? ORB_PRIO_MAX - 1 : ORB_PRIO_HIGH - 1);
+
+		sensor_gyro_control_s grp_control{};
+		_gyro->_gyro_control_topic = orb_advertise_multi(ORB_ID(sensor_gyro_control), &grp_control,
+					     &_gyro->_gyro_orb_class_instance, (is_external()) ? ORB_PRIO_MAX - 1 : ORB_PRIO_HIGH - 1);
 
 		if (_gyro->_gyro_topic == nullptr) {
 			PX4_ERR("ADVERT FAIL");
@@ -1418,6 +1423,14 @@ MPU9250::measure()
 
 		/* return device ID */
 		grb.device_id = _gyro->_device_id.devid;
+
+		sensor_gyro_control_s gyro_control;
+		gyro_control.x = grb.x;
+		gyro_control.y = grb.y;
+		gyro_control.z = grb.z;
+		gyro_control.device_id = grb.device_id;
+		gyro_control.timestamp = grb.timestamp;
+		orb_publish(ORB_ID(sensor_gyro_control), _gyro->_gyro_control_topic, &gyro_control);
 
 		_accel_reports->force(&arb);
 		_gyro_reports->force(&grb);

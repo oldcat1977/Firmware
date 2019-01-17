@@ -46,7 +46,7 @@
 #include <lib/work_queue/WorkItem.hpp>
 #include <uORB/topics/sensor_bias.h>
 #include <uORB/topics/sensor_correction.h>
-#include <uORB/topics/sensor_gyro.h>
+#include <uORB/topics/sensor_gyro_control.h>
 #include <uORB/topics/vehicle_rates.h>
 
 #define MAX_GYRO_COUNT 3
@@ -91,7 +91,7 @@ private:
 
 	matrix::Dcmf _board_rotation;			/**< rotation matrix for the orientation that the board is mounted */
 
-	sensor_gyro_s			_sensor_gyro {};	/**< gyro data before thermal correctons and ekf bias estimates are applied */
+	sensor_gyro_control_s			_sensor_gyro {};	/**< gyro data before thermal correctons and ekf bias estimates are applied */
 	sensor_correction_s		_sensor_correction {};	/**< sensor thermal corrections */
 	sensor_bias_s			_sensor_bias {};	/**< sensor in-run bias corrections */
 

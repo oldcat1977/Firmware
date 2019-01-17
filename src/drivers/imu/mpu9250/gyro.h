@@ -57,6 +57,8 @@ private:
 	MPU9250			*_parent;
 
 	orb_advert_t		_gyro_topic{nullptr};
+	orb_advert_t		_gyro_control_topic{nullptr};
+
 	int			_gyro_orb_class_instance{-1};
 	int			_gyro_class_instance{-1};
 };

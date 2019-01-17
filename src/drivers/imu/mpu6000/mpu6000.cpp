@@ -95,6 +95,7 @@
 #include <mathlib/math/filter/LowPassFilter2p.hpp>
 #include <lib/conversion/rotation.h>
 #include <lib/work_queue/ScheduledWorkItem.hpp>
+#include <uORB/topics/sensor_gyro_control.h>
 
 #include "mpu6000.h"
 
@@ -408,6 +409,8 @@ protected:
 private:
 	MPU6000			*_parent;
 	orb_advert_t		_gyro_topic;
+	orb_advert_t		_gyro_control_topic{nullptr};
+
 	int			_gyro_orb_class_instance;
 	int			_gyro_class_instance;
 
@@ -675,6 +678,10 @@ MPU6000::init()
 
 	_gyro->_gyro_topic = orb_advertise_multi(ORB_ID(sensor_gyro), &grp,
 			     &_gyro->_gyro_orb_class_instance, (is_external()) ? ORB_PRIO_MAX : ORB_PRIO_HIGH);
+
+	sensor_gyro_control_s grp_ctrl{};
+	_gyro->_gyro_control_topic = orb_advertise_multi(ORB_ID(sensor_gyro_control), &grp_ctrl,
+				     &_gyro->_gyro_orb_class_instance, (is_external()) ? ORB_PRIO_MAX : ORB_PRIO_HIGH);
 
 	if (_gyro->_gyro_topic == nullptr) {
 		PX4_WARN("ADVERT FAIL");
@@ -1724,6 +1731,14 @@ MPU6000::measure()
 	grb.x = _gyro_filter_x.apply(x_gyro_in_new);
 	grb.y = _gyro_filter_y.apply(y_gyro_in_new);
 	grb.z = _gyro_filter_z.apply(z_gyro_in_new);
+
+	sensor_gyro_control_s gyro_control;
+	gyro_control.x = grb.x;
+	gyro_control.y = grb.y;
+	gyro_control.z = grb.z;
+	gyro_control.device_id = grb.device_id;
+	gyro_control.timestamp = grb.timestamp;
+	orb_publish(ORB_ID(sensor_gyro_control), _gyro->_gyro_control_topic, &gyro_control);
 
 	matrix::Vector3f gval(x_gyro_in_new, y_gyro_in_new, z_gyro_in_new);
 	matrix::Vector3f gval_integrated;

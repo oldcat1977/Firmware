@@ -52,7 +52,7 @@ VehicleSensors::VehicleSensors() :
 		_sensor_gyro_sub[i] = -1;
 	}
 
-	_gyro_count = math::min(orb_group_count(ORB_ID(sensor_gyro)), MAX_GYRO_COUNT);
+	_gyro_count = math::min(orb_group_count(ORB_ID(sensor_gyro_control)), MAX_GYRO_COUNT);
 
 	if (_gyro_count == 0) {
 		_gyro_count = 1;
@@ -91,11 +91,13 @@ VehicleSensors::task_spawn(int argc, char *argv[])
 
 	VehicleSensors *instance = new VehicleSensors();
 
-	int ret = orb_register_work_callback(ORB_ID(sensor_gyro), 0, instance);
+	int ret = orb_register_work_callback(ORB_ID(sensor_gyro_control), 0, instance);
 
 	if (ret != PX4_OK) {
 		PX4_WARN("task_spawn register ret: %d", ret);
 	}
+
+	orb_register_work_callback(ORB_ID(sensor_correction), 0, instance);
 
 	_task_id = task_id_is_work_queue;
 
@@ -146,14 +148,14 @@ VehicleSensors::Run()
 
 	for (unsigned s = 0; s < _gyro_count; s++) {
 		if (_sensor_gyro_sub[s] == -1) {
-			_sensor_gyro_sub[s] = orb_subscribe_multi(ORB_ID(sensor_gyro), s);
+			_sensor_gyro_sub[s] = orb_subscribe_multi(ORB_ID(sensor_gyro_control), s);
 		}
 	}
 
 	sensor_correction_poll();
 	sensor_bias_poll();
 
-	orb_copy(ORB_ID(sensor_gyro), _sensor_gyro_sub[_selected_gyro], &_sensor_gyro);
+	orb_copy(ORB_ID(sensor_gyro_control), _sensor_gyro_sub[_selected_gyro], &_sensor_gyro);
 
 	// get the raw gyro data and correct for thermal errors
 	Vector3f rates;
