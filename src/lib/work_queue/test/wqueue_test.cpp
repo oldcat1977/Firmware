@@ -83,7 +83,7 @@ int WQueueTest::main()
 
 	PX4_INFO("WQueueTest finished");
 
-	print_status();
+	//print_status();
 
 	px4_sleep(2);
 

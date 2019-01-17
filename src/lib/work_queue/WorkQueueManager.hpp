@@ -80,7 +80,7 @@ static constexpr wq_config wq_configurations[] = {
 	[I2C1] = { "wq:I2C1", 250, 1000 },
 	[I2C2] = { "wq:I2C2", 250, 1000 },
 
-	[rate_ctrl] = { "wq:rate_ctrl", 254, 1000 },
+	[rate_ctrl] = { "wq:rate_ctrl", 254, 1300 },
 	[hp_default] = { "wq:hp_default", 249, 1000 },
 
 	[test1] = { "wq:test1", 255, 800 },

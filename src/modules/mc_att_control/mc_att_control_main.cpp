@@ -100,30 +100,15 @@ MulticopterAttitudeControl::MulticopterAttitudeControl() :
 	ModuleParams(nullptr),
 	_loop_perf(perf_alloc(PC_ELAPSED, "mc_att_control"))
 {
-	for (uint8_t i = 0; i < MAX_GYRO_COUNT; i++) {
-		_sensor_gyro_sub[i] = -1;
-	}
-
 	_vehicle_status.is_rotary_wing = true;
 
 	/* initialize quaternions in messages to be valid */
 	_v_att.q[0] = 1.f;
 	_v_att_sp.q_d[0] = 1.f;
 
-	_rates_prev.zero();
-	_rates_prev_filtered.zero();
 	_rates_sp.zero();
-	_rates_int.zero();
 	_thrust_sp = 0.0f;
 	_att_control.zero();
-
-	/* initialize thermal corrections as we might not immediately get a topic update (only non-zero values) */
-	for (unsigned i = 0; i < 3; i++) {
-		// used scale factors to unity
-		_sensor_correction.gyro_scale_0[i] = 1.0f;
-		_sensor_correction.gyro_scale_1[i] = 1.0f;
-		_sensor_correction.gyro_scale_2[i] = 1.0f;
-	}
 
 	parameters_updated();
 }
@@ -133,34 +118,9 @@ MulticopterAttitudeControl::parameters_updated()
 {
 	/* Store some of the parameters in a more convenient way & precompute often-used values */
 
-	/* roll gains */
-	_attitude_p(0) = _roll_p.get();
-	_rate_p(0) = _roll_rate_p.get();
-	_rate_i(0) = _roll_rate_i.get();
-	_rate_int_lim(0) = _roll_rate_integ_lim.get();
-	_rate_d(0) = _roll_rate_d.get();
-	_rate_ff(0) = _roll_rate_ff.get();
-
-	/* pitch gains */
-	_attitude_p(1) = _pitch_p.get();
-	_rate_p(1) = _pitch_rate_p.get();
-	_rate_i(1) = _pitch_rate_i.get();
-	_rate_int_lim(1) = _pitch_rate_integ_lim.get();
-	_rate_d(1) = _pitch_rate_d.get();
-	_rate_ff(1) = _pitch_rate_ff.get();
-
-	/* yaw gains */
-	_attitude_p(2) = _yaw_p.get();
-	_rate_p(2) = _yaw_rate_p.get();
-	_rate_i(2) = _yaw_rate_i.get();
-	_rate_int_lim(2) = _yaw_rate_integ_lim.get();
-	_rate_d(2) = _yaw_rate_d.get();
-	_rate_ff(2) = _yaw_rate_ff.get();
-
-	if (fabsf(_lp_filters_d.get_cutoff_freq() - _d_term_cutoff_freq.get()) > 0.01f) {
-		_lp_filters_d.set_cutoff_frequency(_loop_update_rate_hz, _d_term_cutoff_freq.get());
-		_lp_filters_d.reset(_rates_prev);
-	}
+	_attitude_p(0) = _roll_p.get(); /* roll gains */
+	_attitude_p(1) = _pitch_p.get(); /* pitch gains */
+	_attitude_p(2) = _yaw_p.get(); /* yaw gains */
 
 	/* angular rate limits */
 	_mc_rate_max(0) = math::radians(_roll_rate_max.get());
@@ -172,24 +132,7 @@ MulticopterAttitudeControl::parameters_updated()
 	_auto_rate_max(1) = math::radians(_pitch_rate_max.get());
 	_auto_rate_max(2) = math::radians(_yaw_auto_max.get());
 
-	/* manual rate control acro mode rate limits and expo */
-	_acro_rate_max(0) = math::radians(_acro_roll_max.get());
-	_acro_rate_max(1) = math::radians(_acro_pitch_max.get());
-	_acro_rate_max(2) = math::radians(_acro_yaw_max.get());
-
 	_man_tilt_max = math::radians(_man_tilt_max_deg.get());
-
-	_actuators_0_circuit_breaker_enabled = circuit_breaker_enabled("CBRK_RATE_CTRL", CBRK_RATE_CTRL_KEY);
-
-	/* get transformation matrix from sensor/board to body frame */
-	_board_rotation = get_rot_matrix((enum Rotation)_board_rotation_param.get());
-
-	/* fine tune the rotation */
-	Dcmf board_rotation_offset(Eulerf(
-			M_DEG_TO_RAD_F * _board_offset_x.get(),
-			M_DEG_TO_RAD_F * _board_offset_y.get(),
-			M_DEG_TO_RAD_F * _board_offset_z.get()));
-	_board_rotation = board_rotation_offset * _board_rotation;
 }
 
 void
@@ -248,20 +191,6 @@ MulticopterAttitudeControl::vehicle_attitude_setpoint_poll()
 	}
 }
 
-bool
-MulticopterAttitudeControl::vehicle_rates_setpoint_poll()
-{
-	/* check if there is a new setpoint */
-	bool updated;
-	orb_check(_v_rates_sp_sub, &updated);
-
-	if (updated) {
-		orb_copy(ORB_ID(vehicle_rates_setpoint), _v_rates_sp_sub, &_v_rates_sp);
-		return true;
-	}
-	return false;
-}
-
 void
 MulticopterAttitudeControl::vehicle_status_poll()
 {
@@ -271,43 +200,6 @@ MulticopterAttitudeControl::vehicle_status_poll()
 
 	if (vehicle_status_updated) {
 		orb_copy(ORB_ID(vehicle_status), _vehicle_status_sub, &_vehicle_status);
-
-		/* set correct uORB ID, depending on if vehicle is VTOL or not */
-		if (_actuators_id == nullptr) {
-			if (_vehicle_status.is_vtol) {
-				_actuators_id = ORB_ID(actuator_controls_virtual_mc);
-
-			} else {
-				_actuators_id = ORB_ID(actuator_controls_0);
-			}
-		}
-	}
-}
-
-void
-MulticopterAttitudeControl::vehicle_motor_limits_poll()
-{
-	/* check if there is a new message */
-	bool updated;
-	orb_check(_motor_limits_sub, &updated);
-
-	if (updated) {
-		multirotor_motor_limits_s motor_limits = {};
-		orb_copy(ORB_ID(multirotor_motor_limits), _motor_limits_sub, &motor_limits);
-
-		_saturation_status.value = motor_limits.saturation_status;
-	}
-}
-
-void
-MulticopterAttitudeControl::battery_status_poll()
-{
-	/* check if there is a new message */
-	bool updated;
-	orb_check(_battery_status_sub, &updated);
-
-	if (updated) {
-		orb_copy(ORB_ID(battery_status), _battery_status_sub, &_battery_status);
 	}
 }
 
@@ -334,36 +226,6 @@ MulticopterAttitudeControl::vehicle_attitude_poll()
 }
 
 void
-MulticopterAttitudeControl::sensor_correction_poll()
-{
-	/* check if there is a new message */
-	bool updated;
-	orb_check(_sensor_correction_sub, &updated);
-
-	if (updated) {
-		orb_copy(ORB_ID(sensor_correction), _sensor_correction_sub, &_sensor_correction);
-	}
-
-	/* update the latest gyro selection */
-	if (_sensor_correction.selected_gyro_instance < _gyro_count) {
-		_selected_gyro = _sensor_correction.selected_gyro_instance;
-	}
-}
-
-void
-MulticopterAttitudeControl::sensor_bias_poll()
-{
-	/* check if there is a new message */
-	bool updated;
-	orb_check(_sensor_bias_sub, &updated);
-
-	if (updated) {
-		orb_copy(ORB_ID(sensor_bias), _sensor_bias_sub, &_sensor_bias);
-	}
-
-}
-
-void
 MulticopterAttitudeControl::vehicle_land_detected_poll()
 {
 	/* check if there is a new message */
@@ -374,17 +236,6 @@ MulticopterAttitudeControl::vehicle_land_detected_poll()
 		orb_copy(ORB_ID(vehicle_land_detected), _vehicle_land_detected_sub, &_vehicle_land_detected);
 	}
 
-}
-
-void
-MulticopterAttitudeControl::landing_gear_state_poll()
-{
-	bool updated;
-	orb_check(_landing_gear_sub, &updated);
-
-	if (updated) {
-		orb_copy(ORB_ID(landing_gear), _landing_gear_sub, &_landing_gear);
-	}
 }
 
 float
@@ -405,33 +256,10 @@ MulticopterAttitudeControl::throttle_curve(float throttle_stick_input)
 	}
 }
 
-float
-MulticopterAttitudeControl::get_landing_gear_state()
-{
-	// Only switch the landing gear up if we are not landed and if
-	// the user switched from gear down to gear up.
-	// If the user had the switch in the gear up position and took off ignore it
-	// until he toggles the switch to avoid retracting the gear immediately on takeoff.
-	if (_vehicle_land_detected.landed) {
-		_gear_state_initialized = false;
-	}
-	float landing_gear = landing_gear_s::GEAR_DOWN; // default to down
-	if (_manual_control_sp.gear_switch == manual_control_setpoint_s::SWITCH_POS_ON && _gear_state_initialized) {
-		landing_gear = landing_gear_s::GEAR_UP;
-
-	} else if (_manual_control_sp.gear_switch == manual_control_setpoint_s::SWITCH_POS_OFF) {
-		// Switching the gear off does put it into a safe defined state
-		_gear_state_initialized = true;
-	}
-
-	return landing_gear;
-}
-
 void
 MulticopterAttitudeControl::generate_attitude_setpoint(float dt, bool reset_yaw_sp)
 {
 	vehicle_attitude_setpoint_s attitude_setpoint{};
-	landing_gear_s landing_gear{};
 	const float yaw = Eulerf(Quatf(_v_att.q)).psi();
 
 	/* reset yaw setpoint to current position if needed */
@@ -520,11 +348,8 @@ MulticopterAttitudeControl::generate_attitude_setpoint(float dt, bool reset_yaw_
 
 	attitude_setpoint.thrust_body[2] = -throttle_curve(_manual_control_sp.z);
 
-	_landing_gear.landing_gear = get_landing_gear_state();
-
-	attitude_setpoint.timestamp = landing_gear.timestamp = hrt_absolute_time();
+	attitude_setpoint.timestamp = hrt_absolute_time();
 	orb_publish_auto(ORB_ID(vehicle_attitude_setpoint), &_vehicle_attitude_setpoint_pub, &attitude_setpoint, nullptr, ORB_PRIO_DEFAULT);
-	orb_publish_auto(ORB_ID(landing_gear), &_landing_gear_pub, &attitude_setpoint, nullptr, ORB_PRIO_DEFAULT);
 }
 
 /**
@@ -611,134 +436,6 @@ MulticopterAttitudeControl::control_attitude()
 	}
 }
 
-/*
- * Throttle PID attenuation
- * Function visualization available here https://www.desmos.com/calculator/gn4mfoddje
- * Input: 'tpa_breakpoint', 'tpa_rate', '_thrust_sp'
- * Output: 'pidAttenuationPerAxis' vector
- */
-Vector3f
-MulticopterAttitudeControl::pid_attenuations(float tpa_breakpoint, float tpa_rate)
-{
-	/* throttle pid attenuation factor */
-	float tpa = 1.0f - tpa_rate * (fabsf(_thrust_sp) - tpa_breakpoint) / (1.0f - tpa_breakpoint);
-	tpa = fmaxf(TPA_RATE_LOWER_LIMIT, fminf(1.0f, tpa));
-
-	Vector3f pidAttenuationPerAxis;
-	pidAttenuationPerAxis(AXIS_INDEX_ROLL) = tpa;
-	pidAttenuationPerAxis(AXIS_INDEX_PITCH) = tpa;
-	pidAttenuationPerAxis(AXIS_INDEX_YAW) = 1.0;
-
-	return pidAttenuationPerAxis;
-}
-
-/*
- * Attitude rates controller.
- * Input: '_rates_sp' vector, '_thrust_sp'
- * Output: '_att_control' vector
- */
-void
-MulticopterAttitudeControl::control_attitude_rates(float dt)
-{
-	/* reset integral if disarmed */
-	if (!_v_control_mode.flag_armed || !_vehicle_status.is_rotary_wing) {
-		_rates_int.zero();
-	}
-
-	// get the raw gyro data and correct for thermal errors
-	Vector3f rates;
-
-	if (_selected_gyro == 0) {
-		rates(0) = (_sensor_gyro.x - _sensor_correction.gyro_offset_0[0]) * _sensor_correction.gyro_scale_0[0];
-		rates(1) = (_sensor_gyro.y - _sensor_correction.gyro_offset_0[1]) * _sensor_correction.gyro_scale_0[1];
-		rates(2) = (_sensor_gyro.z - _sensor_correction.gyro_offset_0[2]) * _sensor_correction.gyro_scale_0[2];
-
-	} else if (_selected_gyro == 1) {
-		rates(0) = (_sensor_gyro.x - _sensor_correction.gyro_offset_1[0]) * _sensor_correction.gyro_scale_1[0];
-		rates(1) = (_sensor_gyro.y - _sensor_correction.gyro_offset_1[1]) * _sensor_correction.gyro_scale_1[1];
-		rates(2) = (_sensor_gyro.z - _sensor_correction.gyro_offset_1[2]) * _sensor_correction.gyro_scale_1[2];
-
-	} else if (_selected_gyro == 2) {
-		rates(0) = (_sensor_gyro.x - _sensor_correction.gyro_offset_2[0]) * _sensor_correction.gyro_scale_2[0];
-		rates(1) = (_sensor_gyro.y - _sensor_correction.gyro_offset_2[1]) * _sensor_correction.gyro_scale_2[1];
-		rates(2) = (_sensor_gyro.z - _sensor_correction.gyro_offset_2[2]) * _sensor_correction.gyro_scale_2[2];
-
-	} else {
-		rates(0) = _sensor_gyro.x;
-		rates(1) = _sensor_gyro.y;
-		rates(2) = _sensor_gyro.z;
-	}
-
-	// rotate corrected measurements from sensor to body frame
-	rates = _board_rotation * rates;
-
-	// correct for in-run bias errors
-	rates(0) -= _sensor_bias.gyro_x_bias;
-	rates(1) -= _sensor_bias.gyro_y_bias;
-	rates(2) -= _sensor_bias.gyro_z_bias;
-
-	Vector3f rates_p_scaled = _rate_p.emult(pid_attenuations(_tpa_breakpoint_p.get(), _tpa_rate_p.get()));
-	Vector3f rates_i_scaled = _rate_i.emult(pid_attenuations(_tpa_breakpoint_i.get(), _tpa_rate_i.get()));
-	Vector3f rates_d_scaled = _rate_d.emult(pid_attenuations(_tpa_breakpoint_d.get(), _tpa_rate_d.get()));
-
-	/* angular rates error */
-	Vector3f rates_err = _rates_sp - rates;
-
-	/* apply low-pass filtering to the rates for D-term */
-	Vector3f rates_filtered(_lp_filters_d.apply(rates));
-
-	_att_control = rates_p_scaled.emult(rates_err) +
-		       _rates_int -
-		       rates_d_scaled.emult(rates_filtered - _rates_prev_filtered) / dt +
-		       _rate_ff.emult(_rates_sp);
-
-	_rates_prev = rates;
-	_rates_prev_filtered = rates_filtered;
-
-	/* update integral only if we are not landed */
-	if (!_vehicle_land_detected.maybe_landed && !_vehicle_land_detected.landed) {
-		for (int i = AXIS_INDEX_ROLL; i < AXIS_COUNT; i++) {
-			// Check for positive control saturation
-			bool positive_saturation =
-				((i == AXIS_INDEX_ROLL) && _saturation_status.flags.roll_pos) ||
-				((i == AXIS_INDEX_PITCH) && _saturation_status.flags.pitch_pos) ||
-				((i == AXIS_INDEX_YAW) && _saturation_status.flags.yaw_pos);
-
-			// Check for negative control saturation
-			bool negative_saturation =
-				((i == AXIS_INDEX_ROLL) && _saturation_status.flags.roll_neg) ||
-				((i == AXIS_INDEX_PITCH) && _saturation_status.flags.pitch_neg) ||
-				((i == AXIS_INDEX_YAW) && _saturation_status.flags.yaw_neg);
-
-			// prevent further positive control saturation
-			if (positive_saturation) {
-				rates_err(i) = math::min(rates_err(i), 0.0f);
-
-			}
-
-			// prevent further negative control saturation
-			if (negative_saturation) {
-				rates_err(i) = math::max(rates_err(i), 0.0f);
-
-			}
-
-			// Perform the integration using a first order method and do not propagate the result if out of range or invalid
-			float rate_i = _rates_int(i) + rates_i_scaled(i) * rates_err(i) * dt;
-
-			if (PX4_ISFINITE(rate_i) && rate_i > -_rate_int_lim(i) && rate_i < _rate_int_lim(i)) {
-				_rates_int(i) = rate_i;
-
-			}
-		}
-	}
-
-	/* explicitly limit the integrator state */
-	for (int i = AXIS_INDEX_ROLL; i < AXIS_COUNT; i++) {
-		_rates_int(i) = math::constrain(_rates_int(i), -_rate_int_lim(i), _rate_int_lim(i));
-
-	}
-}
-
 void
 MulticopterAttitudeControl::publish_rates_setpoint()
 {
@@ -753,73 +450,18 @@ MulticopterAttitudeControl::publish_rates_setpoint()
 }
 
 void
-MulticopterAttitudeControl::publish_rate_controller_status()
-{
-	rate_ctrl_status_s rate_ctrl_status;
-	rate_ctrl_status.timestamp = hrt_absolute_time();
-	rate_ctrl_status.rollspeed = _rates_prev(0);
-	rate_ctrl_status.pitchspeed = _rates_prev(1);
-	rate_ctrl_status.yawspeed = _rates_prev(2);
-	rate_ctrl_status.rollspeed_integ = _rates_int(0);
-	rate_ctrl_status.pitchspeed_integ = _rates_int(1);
-	rate_ctrl_status.yawspeed_integ = _rates_int(2);
-	orb_publish_auto(ORB_ID(rate_ctrl_status), &_controller_status_pub, &rate_ctrl_status, nullptr, ORB_PRIO_DEFAULT);
-}
-
-void
-MulticopterAttitudeControl::publish_actuator_controls()
-{
-	_actuators.control[0] = (PX4_ISFINITE(_att_control(0))) ? _att_control(0) : 0.0f;
-	_actuators.control[1] = (PX4_ISFINITE(_att_control(1))) ? _att_control(1) : 0.0f;
-	_actuators.control[2] = (PX4_ISFINITE(_att_control(2))) ? _att_control(2) : 0.0f;
-	_actuators.control[3] = (PX4_ISFINITE(_thrust_sp)) ? _thrust_sp : 0.0f;
-	_actuators.control[7] = (float)_landing_gear.landing_gear;
-	_actuators.timestamp = hrt_absolute_time();
-	_actuators.timestamp_sample = _sensor_gyro.timestamp;
-
-	/* scale effort by battery status */
-	if (_bat_scale_en.get() && _battery_status.scale > 0.0f) {
-		for (int i = 0; i < 4; i++) {
-			_actuators.control[i] *= _battery_status.scale;
-		}
-	}
-
-	if (!_actuators_0_circuit_breaker_enabled) {
-		orb_publish_auto(_actuators_id, &_actuators_0_pub, &_actuators, nullptr, ORB_PRIO_DEFAULT);
-	}
-}
-
-void
 MulticopterAttitudeControl::run()
 {
-
 	/*
 	 * do subscriptions
 	 */
 	_v_att_sub = orb_subscribe(ORB_ID(vehicle_attitude));
 	_v_att_sp_sub = orb_subscribe(ORB_ID(vehicle_attitude_setpoint));
-	_v_rates_sp_sub = orb_subscribe(ORB_ID(vehicle_rates_setpoint));
 	_v_control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
 	_params_sub = orb_subscribe(ORB_ID(parameter_update));
 	_manual_control_sp_sub = orb_subscribe(ORB_ID(manual_control_setpoint));
 	_vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
-	_motor_limits_sub = orb_subscribe(ORB_ID(multirotor_motor_limits));
-	_battery_status_sub = orb_subscribe(ORB_ID(battery_status));
-
-	_gyro_count = math::min(orb_group_count(ORB_ID(sensor_gyro)), MAX_GYRO_COUNT);
-
-	if (_gyro_count == 0) {
-		_gyro_count = 1;
-	}
-
-	for (unsigned s = 0; s < _gyro_count; s++) {
-		_sensor_gyro_sub[s] = orb_subscribe_multi(ORB_ID(sensor_gyro), s);
-	}
-
-	_sensor_correction_sub = orb_subscribe(ORB_ID(sensor_correction));
-	_sensor_bias_sub = orb_subscribe(ORB_ID(sensor_bias));
 	_vehicle_land_detected_sub = orb_subscribe(ORB_ID(vehicle_land_detected));
-	_landing_gear_sub = orb_subscribe(ORB_ID(landing_gear));
 
 	/* wakeup source: gyro data from sensor selected by the sensor app */
 	px4_pollfd_struct_t poll_fds = {};
@@ -827,15 +469,13 @@ MulticopterAttitudeControl::run()
 
 	const hrt_abstime task_start = hrt_absolute_time();
 	hrt_abstime last_run = task_start;
-	float dt_accumulator = 0.f;
-	int loop_counter = 0;
 
 	bool reset_yaw_sp = true;
 	float attitude_dt = 0.f;
 
 	while (!should_exit()) {
 
-		poll_fds.fd = _sensor_gyro_sub[_selected_gyro];
+		poll_fds.fd = _v_att_sub;
 
 		/* wait for up to 100ms for data */
 		int pret = px4_poll(&poll_fds, 1, 100);
@@ -869,28 +509,12 @@ MulticopterAttitudeControl::run()
 				dt = 0.02f;
 			}
 
-			/* copy gyro data */
-			orb_copy(ORB_ID(sensor_gyro), _sensor_gyro_sub[_selected_gyro], &_sensor_gyro);
-
-			/* run the rate controller immediately after a gyro update */
-			if (_v_control_mode.flag_control_rates_enabled) {
-				control_attitude_rates(dt);
-
-				publish_actuator_controls();
-				publish_rate_controller_status();
-			}
-
 			/* check for updates in other topics */
 			vehicle_control_mode_poll();
 			vehicle_status_poll();
-			vehicle_motor_limits_poll();
-			battery_status_poll();
-			sensor_correction_poll();
-			sensor_bias_poll();
 			vehicle_land_detected_poll();
-			landing_gear_state_poll();
-			const bool manual_control_updated = vehicle_manual_poll();
-			const bool attitude_updated = vehicle_attitude_poll();
+			vehicle_manual_poll();
+			vehicle_attitude_poll();
 			attitude_dt += dt;
 
 			/* Check if we are in rattitude mode and the pilot is above the threshold on pitch
@@ -905,75 +529,32 @@ MulticopterAttitudeControl::run()
 			bool attitude_setpoint_generated = false;
 
 			if (_v_control_mode.flag_control_attitude_enabled && _vehicle_status.is_rotary_wing) {
-				if (attitude_updated) {
-					// Generate the attitude setpoint from stick inputs if we are in Manual/Stabilized mode
-					if (_v_control_mode.flag_control_manual_enabled &&
-							!_v_control_mode.flag_control_altitude_enabled &&
-							!_v_control_mode.flag_control_velocity_enabled &&
-							!_v_control_mode.flag_control_position_enabled) {
-						generate_attitude_setpoint(attitude_dt, reset_yaw_sp);
-						attitude_setpoint_generated = true;
-					}
-
-					control_attitude();
-					publish_rates_setpoint();
+				// Generate the attitude setpoint from stick inputs if we are in Manual/Stabilized mode
+				if (_v_control_mode.flag_control_manual_enabled &&
+						!_v_control_mode.flag_control_altitude_enabled &&
+						!_v_control_mode.flag_control_velocity_enabled &&
+						!_v_control_mode.flag_control_position_enabled) {
+					generate_attitude_setpoint(attitude_dt, reset_yaw_sp);
+					attitude_setpoint_generated = true;
 				}
 
-			} else {
-				/* attitude controller disabled, poll rates setpoint topic */
-				if (_v_control_mode.flag_control_manual_enabled && _vehicle_status.is_rotary_wing) {
-					if (manual_control_updated) {
-						/* manual rates control - ACRO mode */
-						Vector3f man_rate_sp(
-								math::superexpo(_manual_control_sp.y, _acro_expo_rp.get(), _acro_superexpo_rp.get()),
-								math::superexpo(-_manual_control_sp.x, _acro_expo_rp.get(), _acro_superexpo_rp.get()),
-								math::superexpo(_manual_control_sp.r, _acro_expo_y.get(), _acro_superexpo_y.get()));
-						_rates_sp = man_rate_sp.emult(_acro_rate_max);
-						_thrust_sp = _manual_control_sp.z;
-						publish_rates_setpoint();
-					}
-
-				} else {
-					/* attitude controller disabled, poll rates setpoint topic */
-					if (vehicle_rates_setpoint_poll()) {
-						_rates_sp(0) = _v_rates_sp.roll;
-						_rates_sp(1) = _v_rates_sp.pitch;
-						_rates_sp(2) = _v_rates_sp.yaw;
-						_thrust_sp = -_v_rates_sp.thrust_body[2];
-					}
-				}
+				control_attitude();
+				publish_rates_setpoint();
 			}
 
 			if (_v_control_mode.flag_control_termination_enabled) {
 				if (!_vehicle_status.is_vtol) {
 					_rates_sp.zero();
-					_rates_int.zero();
 					_thrust_sp = 0.0f;
 					_att_control.zero();
-					publish_actuator_controls();
 				}
 			}
 
-			if (attitude_updated) {
-				reset_yaw_sp = (!attitude_setpoint_generated && !_v_control_mode.flag_control_rattitude_enabled) ||
+			reset_yaw_sp = (!attitude_setpoint_generated && !_v_control_mode.flag_control_rattitude_enabled) ||
 						_vehicle_land_detected.landed ||
 						(_vehicle_status.is_vtol && !_vehicle_status.is_rotary_wing); // VTOL in FW mode
+
 				attitude_dt = 0.f;
-			}
-
-			/* calculate loop update rate while disarmed or at least a few times (updating the filter is expensive) */
-			if (!_v_control_mode.flag_armed || (now - task_start) < 3300000) {
-				dt_accumulator += dt;
-				++loop_counter;
-
-				if (dt_accumulator > 1.f) {
-					const float loop_update_rate = (float)loop_counter / dt_accumulator;
-					_loop_update_rate_hz = _loop_update_rate_hz * 0.5f + loop_update_rate * 0.5f;
-					dt_accumulator = 0;
-					loop_counter = 0;
-					_lp_filters_d.set_cutoff_frequency(_loop_update_rate_hz, _d_term_cutoff_freq.get());
-				}
-			}
 
 			parameter_update_poll();
 		}
@@ -983,22 +564,11 @@ MulticopterAttitudeControl::run()
 
 	orb_unsubscribe(_v_att_sub);
 	orb_unsubscribe(_v_att_sp_sub);
-	orb_unsubscribe(_v_rates_sp_sub);
 	orb_unsubscribe(_v_control_mode_sub);
 	orb_unsubscribe(_params_sub);
 	orb_unsubscribe(_manual_control_sp_sub);
 	orb_unsubscribe(_vehicle_status_sub);
-	orb_unsubscribe(_motor_limits_sub);
-	orb_unsubscribe(_battery_status_sub);
-
-	for (unsigned s = 0; s < _gyro_count; s++) {
-		orb_unsubscribe(_sensor_gyro_sub[s]);
-	}
-
-	orb_unsubscribe(_sensor_correction_sub);
-	orb_unsubscribe(_sensor_bias_sub);
 	orb_unsubscribe(_vehicle_land_detected_sub);
-	orb_unsubscribe(_landing_gear_sub);
 }
 
 int MulticopterAttitudeControl::task_spawn(int argc, char *argv[])

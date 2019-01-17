@@ -39,6 +39,7 @@ px4_add_board(
 		mavlink
 		mc_att_control
 		mc_pos_control
+		mc_rate_control
 		navigator
 		position_estimator_inav
 		replay

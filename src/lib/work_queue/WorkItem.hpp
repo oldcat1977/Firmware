@@ -67,7 +67,9 @@ public:
 	void pre_run();
 	void post_run();
 
+#if WQ_ITEM_PERF
 	void print_status() const;
+#endif /* WQ_ITEM_PERF */
 
 	const uint64_t &qtime() { return _qtime; }
 

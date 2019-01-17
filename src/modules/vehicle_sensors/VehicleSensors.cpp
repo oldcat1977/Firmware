@@ -186,6 +186,7 @@ VehicleSensors::Run()
 	vrates.roll = rates(0);
 	vrates.pitch = rates(1);
 	vrates.yaw = rates(2);
+	vrates.timestamp_sample = _sensor_gyro.timestamp;
 	vrates.timestamp = hrt_absolute_time();
 
 	orb_publish_auto(ORB_ID(vehicle_rates), &_vehicle_rates_pub, &vrates, nullptr, ORB_PRIO_DEFAULT);

@@ -106,13 +106,13 @@ void WorkItem::post_run()
 #endif /* WQ_ITEM_PERF */
 }
 
+#if WQ_ITEM_PERF
 void WorkItem::print_status() const
 {
-#if WQ_ITEM_PERF
 	perf_print_counter(_perf_cycle_time);
 	perf_print_counter(_perf_interval);
 	perf_print_counter(_perf_latency);
-#endif /* WQ_ITEM_PERF */
 }
+#endif /* WQ_ITEM_PERF */
 
 } // namespace px4

@@ -39,18 +39,15 @@
 #include <px4_log.h>
 #include <px4_module.h>
 #include <px4_module_params.h>
-#include <matrix/matrix/math.hpp>
-#include <mathlib/math/Limits.hpp>
-#include <mathlib/math/Functions.hpp>
-#include <conversion/rotation.h>
-
-
+#include <lib/matrix/matrix/math.hpp>
+#include <lib/mathlib/math/Limits.hpp>
+#include <lib/mathlib/math/Functions.hpp>
+#include <lib/conversion/rotation.h>
 #include <lib/work_queue/WorkItem.hpp>
 #include <uORB/topics/sensor_bias.h>
 #include <uORB/topics/sensor_correction.h>
 #include <uORB/topics/sensor_gyro.h>
 #include <uORB/topics/vehicle_rates.h>
-
 
 #define MAX_GYRO_COUNT 3
 
@@ -70,9 +67,6 @@ public:
 	/** @see ModuleBase */
 	static int print_usage(const char *reason = nullptr);
 
-	/** @see ModuleBase::run() */
-	//void run() override;
-
 	/**
 	 * run the main loop: if running as task, continuously iterate, otherwise execute only one single cycle
 	 */
@@ -80,8 +74,6 @@ public:
 
 	/** @see ModuleBase::print_status() */
 	int print_status() override;
-
-	int	init();
 
 private:
 

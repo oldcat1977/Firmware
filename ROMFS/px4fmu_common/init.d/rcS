@@ -352,6 +352,8 @@ else
 		commander start
 	fi
 
+	vehicle_sensors start
+
 	# Sensors on the PWM interface bank.
 	if param compare SENS_EN_LL40LS 1
 	then

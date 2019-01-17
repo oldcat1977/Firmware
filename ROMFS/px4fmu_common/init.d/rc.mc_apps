@@ -52,6 +52,7 @@ fi
 #
 # Start Multicopter Attitude Controller.
 #
+mc_rate_control start
 mc_att_control start
 
 #
