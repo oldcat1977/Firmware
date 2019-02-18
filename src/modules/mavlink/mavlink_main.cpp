@@ -1867,6 +1867,13 @@ Mavlink::configure_streams_to_default(const char *configure_single_stream)
 		configure_stream_local("VFR_HUD", 1.0f);
 		break;
 
+	case MAVLINK_MODE_CAMERA:
+		configure_stream_local("ATTITUDE", 10.0f);
+		configure_stream_local("CAMERA_TRIGGER", unlimited_rate);
+		configure_stream_local("GLOBAL_POSITION_INT", 10.0f);
+		configure_stream_local("SYSTEM_TIME", 2.0f);
+		break;
+
 	default:
 		ret = -1;
 		break;
@@ -2045,10 +2052,6 @@ Mavlink::task_main(int argc, char *argv[])
 					if (strcmp(myoptarg, "custom") == 0) {
 						_mode = MAVLINK_MODE_CUSTOM;
 
-					} else if (strcmp(myoptarg, "camera") == 0) {
-						// left in here for compatibility
-						_mode = MAVLINK_MODE_ONBOARD;
-
 					} else if (strcmp(myoptarg, "onboard") == 0) {
 						_mode = MAVLINK_MODE_ONBOARD;
 
@@ -2067,6 +2070,9 @@ Mavlink::task_main(int argc, char *argv[])
 
 					} else if (strcmp(myoptarg, "minimal") == 0) {
 						_mode = MAVLINK_MODE_MINIMAL;
+
+					} else if (strcmp(myoptarg, "camera") == 0) {
+						_mode = MAVLINK_MODE_CAMERA;
 
 					} else {
 						PX4_ERR("invalid mode");
@@ -3049,7 +3055,7 @@ $ mavlink stream -u 14556 -s HIGHRES_IMU -r 50
 	PRINT_MODULE_USAGE_PARAM_STRING('t', "127.0.0.1", nullptr,
 					"Partner IP (broadcasting can be enabled via MAV_BROADCAST param)", true);
 #endif
-	PRINT_MODULE_USAGE_PARAM_STRING('m', "normal", "custom|camera|onboard|osd|magic|config|iridium|minimal",
+	PRINT_MODULE_USAGE_PARAM_STRING('m', "normal", "custom|onboard|osd|magic|config|iridium|minimal|camera",
 					"Mode: sets default streams and rates", true);
 	PRINT_MODULE_USAGE_PARAM_STRING('n', nullptr, "<interface_name>", "wifi/ethernet interface name", true);
 #if defined(CONFIG_NET_IGMP) && defined(CONFIG_NET_ROUTE)
