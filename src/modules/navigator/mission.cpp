@@ -898,7 +898,8 @@ Mission::set_mission_items()
 				// XXX: add other types which should be ignored in fast forward
 				if (_mission_execution_mode == mission_result_s::MISSION_EXECUTION_MODE_FAST_FORWARD &&
 				    ((_mission_item.nav_cmd == NAV_CMD_LOITER_UNLIMITED) ||
-				     (_mission_item.nav_cmd == NAV_CMD_LOITER_TIME_LIMIT))) {
+				     (_mission_item.nav_cmd == NAV_CMD_LOITER_TIME) ||
+				     (_mission_item.nav_cmd == NAV_CMD_LOITER_TURNS))) {
 					_mission_item.nav_cmd = NAV_CMD_WAYPOINT;
 					_mission_item.autocontinue = true;
 					_mission_item.time_inside = 0.0f;
@@ -1089,7 +1090,8 @@ Mission::do_need_vertical_takeoff()
 			    _mission_item.nav_cmd == NAV_CMD_TAKEOFF ||
 			    _mission_item.nav_cmd == NAV_CMD_WAYPOINT ||
 			    _mission_item.nav_cmd == NAV_CMD_VTOL_TAKEOFF ||
-			    _mission_item.nav_cmd == NAV_CMD_LOITER_TIME_LIMIT ||
+			    _mission_item.nav_cmd == NAV_CMD_LOITER_TIME ||
+			    _mission_item.nav_cmd == NAV_CMD_LOITER_TURNS ||
 			    _mission_item.nav_cmd == NAV_CMD_LOITER_UNLIMITED)) {
 
 			_need_takeoff = false;

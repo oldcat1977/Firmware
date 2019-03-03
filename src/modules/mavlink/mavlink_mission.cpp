@@ -1330,8 +1330,17 @@ MavlinkMissionManager::parse_mavlink_mission_item(const mavlink_mission_item_t *
 			mission_item->yaw = wrap_2pi(math::radians(mavlink_mission_item->param4));
 			break;
 
+		case MAV_CMD_NAV_LOITER_TURNS:
+			mission_item->nav_cmd = NAV_CMD_LOITER_TURNS;
+			mission_item->loiter_radius = mavlink_mission_item->param3;
+			mission_item->loiter_exit_xtrack = (mavlink_mission_item->param4 > 0);
+			// Yaw is only valid for multicopter but we set it always because
+			// it's just ignored for fixedwing.
+			mission_item->yaw = wrap_2pi(math::radians(mavlink_mission_item->param4));
+			break;
+
 		case MAV_CMD_NAV_LOITER_TIME:
-			mission_item->nav_cmd = NAV_CMD_LOITER_TIME_LIMIT;
+			mission_item->nav_cmd = NAV_CMD_LOITER_TIME;
 			mission_item->time_inside = mavlink_mission_item->param1;
 			mission_item->loiter_radius = mavlink_mission_item->param3;
 			mission_item->loiter_exit_xtrack = (mavlink_mission_item->param4 > 0);
@@ -1599,7 +1608,12 @@ MavlinkMissionManager::format_mavlink_mission_item(const struct mission_item_s *
 			mavlink_mission_item->param4 = math::degrees(mission_item->yaw);
 			break;
 
-		case NAV_CMD_LOITER_TIME_LIMIT:
+		case NAV_CMD_LOITER_TURNS:
+			mavlink_mission_item->param3 = mission_item->loiter_radius;
+			mavlink_mission_item->param4 = mission_item->loiter_exit_xtrack;
+			break;
+
+		case NAV_CMD_LOITER_TIME:
 			mavlink_mission_item->param1 = mission_item->time_inside;
 			mavlink_mission_item->param3 = mission_item->loiter_radius;
 			mavlink_mission_item->param4 = mission_item->loiter_exit_xtrack;

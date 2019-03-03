@@ -221,7 +221,8 @@ MissionFeasibilityChecker::checkMissionItemValidity(const mission_s &mission)
 		if (missionitem.nav_cmd != NAV_CMD_IDLE &&
 		    missionitem.nav_cmd != NAV_CMD_WAYPOINT &&
 		    missionitem.nav_cmd != NAV_CMD_LOITER_UNLIMITED &&
-		    missionitem.nav_cmd != NAV_CMD_LOITER_TIME_LIMIT &&
+		    missionitem.nav_cmd != NAV_CMD_LOITER_TIME &&
+		    missionitem.nav_cmd != NAV_CMD_LOITER_TURNS &&
 		    missionitem.nav_cmd != NAV_CMD_RETURN_TO_LAUNCH &&
 		    missionitem.nav_cmd != NAV_CMD_LAND &&
 		    missionitem.nav_cmd != NAV_CMD_TAKEOFF &&

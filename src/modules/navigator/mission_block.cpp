@@ -215,7 +215,8 @@ MissionBlock::is_mission_item_reached()
 
 		} else if (!_navigator->get_vstatus()->is_rotary_wing &&
 			   (_mission_item.nav_cmd == NAV_CMD_LOITER_UNLIMITED ||
-			    _mission_item.nav_cmd == NAV_CMD_LOITER_TIME_LIMIT)) {
+			    _mission_item.nav_cmd == NAV_CMD_LOITER_TIME ||
+			    _mission_item.nav_cmd == NAV_CMD_LOITER_TURNS)) {
 			/* Loiter mission item on a non rotary wing: the aircraft is going to circle the
 			 * coordinates with a radius equal to the loiter_radius field. It is not flying
 			 * through the waypoint center.
@@ -329,7 +330,7 @@ MissionBlock::is_mission_item_reached()
 	if (_waypoint_position_reached && !_waypoint_yaw_reached) {
 
 		if ((_navigator->get_vstatus()->is_rotary_wing && PX4_ISFINITE(_navigator->get_yaw_acceptance(_mission_item.yaw)))
-		    || ((_mission_item.nav_cmd == NAV_CMD_LOITER_TO_ALT || _mission_item.nav_cmd == NAV_CMD_LOITER_TIME_LIMIT)
+		    || ((_mission_item.nav_cmd == NAV_CMD_LOITER_TO_ALT || _mission_item.nav_cmd == NAV_CMD_LOITER_TIME)
 			&& _mission_item.force_heading
 			&& PX4_ISFINITE(_mission_item.yaw))) {
 
@@ -379,7 +380,7 @@ MissionBlock::is_mission_item_reached()
 			// exit xtrack location
 			// reset lat/lon of loiter waypoint so vehicle follows a tangent
 			if (_mission_item.loiter_exit_xtrack && next_sp.valid && PX4_ISFINITE(range) &&
-			    (_mission_item.nav_cmd == NAV_CMD_LOITER_TIME_LIMIT ||
+			    (_mission_item.nav_cmd == NAV_CMD_LOITER_TIME ||
 			     _mission_item.nav_cmd == NAV_CMD_LOITER_TO_ALT)) {
 
 				float bearing = get_bearing_to_next_waypoint(curr_sp.lat, curr_sp.lon, next_sp.lat, next_sp.lon);
@@ -481,7 +482,7 @@ float
 MissionBlock::get_time_inside(const mission_item_s &item) const
 {
 	if ((item.nav_cmd == NAV_CMD_WAYPOINT && _navigator->get_vstatus()->is_rotary_wing) ||
-	    item.nav_cmd == NAV_CMD_LOITER_TIME_LIMIT ||
+	    item.nav_cmd == NAV_CMD_LOITER_TIME ||
 	    item.nav_cmd == NAV_CMD_DELAY) {
 
 		// a negative time inside would be invalid
@@ -496,7 +497,8 @@ MissionBlock::item_contains_position(const mission_item_s &item)
 {
 	return item.nav_cmd == NAV_CMD_WAYPOINT ||
 	       item.nav_cmd == NAV_CMD_LOITER_UNLIMITED ||
-	       item.nav_cmd == NAV_CMD_LOITER_TIME_LIMIT ||
+	       item.nav_cmd == NAV_CMD_LOITER_TIME ||
+	       item.nav_cmd == NAV_CMD_LOITER_TURNS ||
 	       item.nav_cmd == NAV_CMD_LAND ||
 	       item.nav_cmd == NAV_CMD_TAKEOFF ||
 	       item.nav_cmd == NAV_CMD_LOITER_TO_ALT ||
@@ -576,8 +578,9 @@ MissionBlock::mission_item_to_position_setpoint(const mission_item_s &item, posi
 		}
 
 	// fall through
-	case NAV_CMD_LOITER_TIME_LIMIT:
+	case NAV_CMD_LOITER_TIME:
 	case NAV_CMD_LOITER_UNLIMITED:
+	case NAV_CMD_LOITER_TURNS:
 		sp->type = position_setpoint_s::SETPOINT_TYPE_LOITER;
 		break;
 
