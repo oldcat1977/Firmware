@@ -381,6 +381,7 @@ MissionBlock::is_mission_item_reached()
 			// reset lat/lon of loiter waypoint so vehicle follows a tangent
 			if (_mission_item.loiter_exit_xtrack && next_sp.valid && PX4_ISFINITE(range) &&
 			    (_mission_item.nav_cmd == NAV_CMD_LOITER_TIME ||
+			     _mission_item.nav_cmd == NAV_CMD_LOITER_TURNS ||
 			     _mission_item.nav_cmd == NAV_CMD_LOITER_TO_ALT)) {
 
 				float bearing = get_bearing_to_next_waypoint(curr_sp.lat, curr_sp.lon, next_sp.lat, next_sp.lon);

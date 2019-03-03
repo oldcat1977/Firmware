@@ -1337,6 +1337,7 @@ MavlinkMissionManager::parse_mavlink_mission_item(const mavlink_mission_item_t *
 			// Yaw is only valid for multicopter but we set it always because
 			// it's just ignored for fixedwing.
 			mission_item->yaw = wrap_2pi(math::radians(mavlink_mission_item->param4));
+			mission_item->force_heading = true;
 			break;
 
 		case MAV_CMD_NAV_LOITER_TIME:
@@ -1347,6 +1348,7 @@ MavlinkMissionManager::parse_mavlink_mission_item(const mavlink_mission_item_t *
 			// Yaw is only valid for multicopter but we set it always because
 			// it's just ignored for fixedwing.
 			mission_item->yaw = wrap_2pi(math::radians(mavlink_mission_item->param4));
+			mission_item->force_heading = true;
 			break;
 
 		case MAV_CMD_NAV_LAND:
