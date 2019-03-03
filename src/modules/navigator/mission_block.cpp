@@ -329,7 +329,8 @@ MissionBlock::is_mission_item_reached()
 	if (_waypoint_position_reached && !_waypoint_yaw_reached) {
 
 		if ((_navigator->get_vstatus()->is_rotary_wing && PX4_ISFINITE(_navigator->get_yaw_acceptance(_mission_item.yaw)))
-		    || ((_mission_item.nav_cmd == NAV_CMD_LOITER_TO_ALT) && _mission_item.force_heading
+		    || ((_mission_item.nav_cmd == NAV_CMD_LOITER_TO_ALT || _mission_item.nav_cmd == NAV_CMD_LOITER_TIME_LIMIT)
+			&& _mission_item.force_heading
 			&& PX4_ISFINITE(_mission_item.yaw))) {
 
 			/* check course if defined only for rotary wing except takeoff */
