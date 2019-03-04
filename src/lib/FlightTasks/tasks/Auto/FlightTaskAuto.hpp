@@ -47,7 +47,6 @@
 #include <lib/ecl/geo/geo.h>
 #include "lib/FlightTasks/tasks/Utility/ObstacleAvoidance.hpp"
 
-
 /**
  * This enum has to agree with position_setpoint_s type definition
  * The only reason for not using the struct position_setpoint is because
@@ -111,8 +110,6 @@ protected:
 					(ParamInt<px4::params::MPC_YAW_MODE>) MPC_YAW_MODE, // defines how heading is executed,
 					(ParamInt<px4::params::COM_OBS_AVOID>) COM_OBS_AVOID // obstacle avoidance active
 				       );
-
-
 
 private:
 	matrix::Vector2f _lock_position_xy{NAN, NAN}; /**< if no valid triplet is received, lock positition to current position */
