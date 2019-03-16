@@ -57,10 +57,10 @@ set(srcs
 	test_microbench_matrix.cpp
 	test_microbench_uorb.cpp
 	test_mixer.cpp
-	test_mount.c
+	test_mount.cpp
 	test_param.c
 	test_parameters.cpp
-	test_perf.c
+	test_perf.cpp
 	test_ppm.cpp
 	test_ppm_loopback.c
 	test_rc.c

@@ -41,7 +41,7 @@
 
 #include <perf/perf_counter.h>
 
-__EXPORT int perf_main(int argc, char *argv[]);
+extern "C" __EXPORT int perf_main(int argc, char *argv[]);
 
 
 static void print_usage(void)
@@ -77,5 +77,3 @@ int perf_main(int argc, char *argv[])
 	fflush(stdout);
 	return 0;
 }
-
-

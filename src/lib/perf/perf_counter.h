@@ -44,8 +44,9 @@
 
 #define LATENCY_BUCKET_COUNT 8
 
-extern const uint16_t latency_bucket_count;
-extern const uint16_t latency_buckets[LATENCY_BUCKET_COUNT];
+static constexpr uint16_t latency_bucket_count{LATENCY_BUCKET_COUNT};
+static constexpr uint16_t latency_buckets[LATENCY_BUCKET_COUNT] { 1, 2, 5, 10, 20, 50, 100, 1000 };
+
 extern uint32_t latency_counters[LATENCY_BUCKET_COUNT + 1];
 
 /**
