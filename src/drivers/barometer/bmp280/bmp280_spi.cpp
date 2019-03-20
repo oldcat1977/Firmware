@@ -42,8 +42,6 @@
 #include "bmp280.h"
 #include <drivers/device/spi.h>
 
-#include "board_config.h"
-
 /* SPI protocol address bits */
 #define DIR_READ			(1<<7)  //for set
 #define DIR_WRITE			~(1<<7) //for clear

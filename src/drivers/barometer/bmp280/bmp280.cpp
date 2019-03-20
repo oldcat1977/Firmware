@@ -36,39 +36,17 @@
  * Driver for the BMP280 barometric pressure sensor connected via I2C TODO or SPI.
  */
 
-#include <px4_config.h>
-
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <semaphore.h>
-#include <string.h>
-#include <fcntl.h>
-#include <poll.h>
-#include <errno.h>
-#include <stdio.h>
-#include <math.h>
-#include <unistd.h>
-#include <px4_getopt.h>
-#include <px4_log.h>
-
-#include <nuttx/arch.h>
-#include <nuttx/wqueue.h>
-#include <nuttx/clock.h>
-
-#include <arch/board/board.h>
-#include <board_config.h>
 #include "bmp280.h"
 
+#include <px4_config.h>
+#include <px4_getopt.h>
+#include <px4_log.h>
+#include <px4_workqueue.h>
 #include <lib/cdev/CDev.hpp>
 #include <drivers/drv_baro.h>
 #include <drivers/drv_hrt.h>
 #include <drivers/device/ringbuffer.h>
-
 #include <perf/perf_counter.h>
-#include <systemlib/err.h>
-
 
 enum BMP280_BUS {
 	BMP280_BUS_ALL = 0,
@@ -94,8 +72,8 @@ public:
 
 	virtual int		init();
 
-	virtual ssize_t	read(struct file *filp, char *buffer, size_t buflen);
-	virtual int		ioctl(struct file *filp, int cmd, unsigned long arg);
+	virtual ssize_t		read(cdev::file_t *filp, char *buffer, size_t buflen);
+	virtual int		ioctl(cdev::file_t *filp, int cmd, unsigned long arg);
 
 	/**
 	 * Diagnostics - print some basic information about the driver.
@@ -256,7 +234,7 @@ BMP280::init()
 		return -EIO;
 	}
 
-	usleep(TICK2USEC(_max_mesure_ticks));
+	px4_usleep(BPM280_MT_INIT + BPM280_MT * 16);
 
 	if (collect()) {
 		return -EIO;
@@ -277,7 +255,7 @@ BMP280::init()
 }
 
 ssize_t
-BMP280::read(struct file *filp, char *buffer, size_t buflen)
+BMP280::read(cdev::file_t *filp, char *buffer, size_t buflen)
 {
 	unsigned count = buflen / sizeof(sensor_baro_s);
 	sensor_baro_s *brp = reinterpret_cast<sensor_baro_s *>(buffer);
@@ -315,7 +293,7 @@ BMP280::read(struct file *filp, char *buffer, size_t buflen)
 		return -EIO;
 	}
 
-	usleep(TICK2USEC(_max_mesure_ticks));
+	px4_usleep(BPM280_MT_INIT + BPM280_MT * 16);
 
 	if (collect()) {
 		return -EIO;
@@ -329,7 +307,7 @@ BMP280::read(struct file *filp, char *buffer, size_t buflen)
 }
 
 int
-BMP280::ioctl(struct file *filp, int cmd, unsigned long arg)
+BMP280::ioctl(cdev::file_t *filp, int cmd, unsigned long arg)
 {
 	switch (cmd) {
 
@@ -348,7 +326,7 @@ BMP280::ioctl(struct file *filp, int cmd, unsigned long arg)
 			/* FALLTHROUGH */
 			default: {
 					if (ticks == 0) {
-						ticks = USEC2TICK(USEC_PER_SEC / arg);
+						ticks = USEC2TICK(1000000 / arg);
 					}
 
 					/* do we need to start internal polling? */
@@ -553,11 +531,9 @@ struct bmp280_bus_option {
 	{ BMP280_BUS_SPI_INTERNAL, "/dev/bmp280_spi_int", &bmp280_spi_interface, PX4_SPI_BUS_SENSORS, PX4_SPIDEV_BARO, false, NULL },
 #  endif
 #endif
-#ifdef PX4_I2C_OBDEV_BMP280
-	{ BMP280_BUS_I2C_INTERNAL, "/dev/bmp280_i2c_int", &bmp280_i2c_interface, PX4_I2C_BUS_EXPANSION, PX4_I2C_OBDEV_BMP280, false, NULL },
-#endif
-#if defined(PX4_I2C_BUS_EXPANSION) && defined(PX4_I2C_EXT_OBDEV_BMP280)
-	{ BMP280_BUS_I2C_EXTERNAL, "/dev/bmp280_i2c_ext", &bmp280_i2c_interface, PX4_I2C_BUS_EXPANSION, PX4_I2C_EXT_OBDEV_BMP280, true, NULL },
+	{ BMP280_BUS_I2C_INTERNAL, "/dev/bmp280_i2c_int", &bmp280_i2c_interface, PX4_I2C_BUS_EXPANSION, 0x76, false, NULL },
+#if defined(PX4_I2C_BUS_EXPANSION)
+	{ BMP280_BUS_I2C_EXTERNAL, "/dev/bmp280_i2c_ext", &bmp280_i2c_interface, PX4_I2C_BUS_EXPANSION, 0x76, true, NULL },
 #endif
 };
 #define NUM_BUS_OPTIONS (sizeof(bus_options)/sizeof(bus_options[0]))

@@ -42,10 +42,6 @@
 #include "bmp280.h"
 #include <drivers/device/i2c.h>
 
-#include "board_config.h"
-
-#if defined(PX4_I2C_OBDEV_BMP280) || defined(PX4_I2C_EXT_OBDEV_BMP280)
-
 class BMP280_I2C: public device::I2C, public bmp280::IBMP280
 {
 public:
@@ -124,5 +120,3 @@ bmp280::calibration_s *BMP280_I2C::get_calibration(uint8_t addr)
 		return nullptr;
 	}
 }
-
-#endif /* PX4_I2C_OBDEV_BMP280 || PX4_I2C_EXT_OBDEV_BMP280 */

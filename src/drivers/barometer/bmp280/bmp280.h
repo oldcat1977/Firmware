@@ -38,6 +38,9 @@
  */
 #pragma once
 
+#include <stdint.h>
+#include <math.h>
+
 #define BPM280_ADDR_CAL		0x88	/* address of 12x 2 bytes calibration data */
 #define BPM280_ADDR_DATA	0xF7	/* address of 2x 3 bytes p-t data */
 
