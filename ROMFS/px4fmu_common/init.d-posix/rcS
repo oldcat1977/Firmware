@@ -86,6 +86,8 @@ param set MAV_SYS_ID $((px4_instance+1))
 simulator_tcp_port=$((4560+px4_instance))
 udp_offboard_port_local=$((14580+px4_instance))
 udp_offboard_port_remote=$((14540+px4_instance))
+udp_onboard_payload_port_local=$((14558+px4_instance))
+udp_onboard_payload_port_remote=$((14530+px4_instance))
 udp_gcs_port_local=$((14570+px4_instance))
 
 if [ $AUTOCNF = yes ]
@@ -254,6 +256,9 @@ mavlink stream -r 10 -s OPTICAL_FLOW_RAD -u $udp_gcs_port_local
 
 # API/Offboard link
 mavlink start -x -u $udp_offboard_port_local -r 4000000 -m onboard -o $udp_offboard_port_remote
+
+# Onboard link to camera
+mavlink start -x -u $udp_onboard_payload_port_local -r 4000 -f -m onboard -o $udp_onboard_payload_port_remote
 
 # execute autostart post script if any
 [ -e "$autostart_file".post ] && sh "$autostart_file".post
