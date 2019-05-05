@@ -53,7 +53,7 @@ set(viewers none jmavsim gazebo)
 set(debuggers none ide gdb lldb ddd valgrind callgrind)
 set(models none shell
 	if750a iris iris_opt_flow iris_vision iris_rplidar iris_irlock iris_obs_avoid solo typhoon_h480
-	plane
+	plane plane_cam
 	standard_vtol tailsitter tiltrotor
 	hippocampus rover)
 set(all_posix_vmd_make_targets)
