@@ -154,6 +154,13 @@ public:
 	 * 	@see _vel_sp
 	 * 	@return The velocity set-point that was executed in the control-loop. Nan if velocity control-loop was skipped.
 	 */
+	const matrix::Vector3f getAccelerationSetpoint() { return _acc_sp; }
+
+	/**
+	 * 	Get the
+	 * 	@see _vel_sp
+	 * 	@return The velocity set-point that was executed in the control-loop. Nan if velocity control-loop was skipped.
+	 */
 	const matrix::Vector3f getVelSp()
 	{
 		matrix::Vector3f vel_sp{};

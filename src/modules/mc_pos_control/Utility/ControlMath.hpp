@@ -54,6 +54,22 @@ namespace ControlMath
 vehicle_attitude_setpoint_s thrustToAttitude(const matrix::Vector3f &thr_sp, const float yaw_sp);
 
 /**
+ * Converts acceleration vector and yaw set-point to a desired attitude.
+ * @param acc_sp a 3D vector
+ * @param yaw_sp the desired yaw
+ * @return vehicle_attitude_setpoints_s struct for attitude controller
+ */
+vehicle_attitude_setpoint_s accelerationToAttitude(const matrix::Vector3f &acc_sp, const float yaw_sp, const float hover_thrust);
+
+/**
+ * Converts a body z vector and yaw set-point to a desired attitude.
+ * @param body_z a world frame 3D vector in direction of the desired body z axis
+ * @param yaw_sp the desired yaw
+ * @return vehicle_attitude_setpoints_s struct for attitude controller
+ */
+vehicle_attitude_setpoint_s bodyzToAttitude(matrix::Vector3f body_z, const float yaw_sp);
+
+/**
  * Outputs the sum of two vectors but respecting the limits and priority.
  * The sum of two vectors are constraint such that v0 has priority over v1.
  * This means that if the length of (v0+v1) exceeds max, then it is constraint such

@@ -156,7 +156,8 @@ private:
 		(ParamInt<px4::params::MPC_AUTO_MODE>) _param_mpc_auto_mode,
 		(ParamInt<px4::params::MPC_ALT_MODE>) _param_mpc_alt_mode,
 		(ParamFloat<px4::params::MPC_SPOOLUP_TIME>) _param_mpc_spoolup_time, /**< time to let motors spool up after arming */
-		(ParamFloat<px4::params::MPC_TILTMAX_LND>) _param_mpc_tiltmax_lnd /**< maximum tilt for landing and smooth takeoff */
+		(ParamFloat<px4::params::MPC_TILTMAX_LND>) _param_mpc_tiltmax_lnd, /**< maximum tilt for landing and smooth takeoff */
+		(ParamFloat<px4::params::MPC_THR_HOVER>) _param_mpc_thr_hover
 	);
 
 	control::BlockDerivative _vel_x_deriv; /**< velocity derivative in x */
@@ -635,13 +636,13 @@ MulticopterPositionControl::run()
 				if (!(PX4_ISFINITE(setpoint.position[0]) && PX4_ISFINITE(setpoint.position[1])) &&
 				    !(PX4_ISFINITE(setpoint.velocity[0]) && PX4_ISFINITE(setpoint.velocity[1])) &&
 				    !(PX4_ISFINITE(setpoint.thrust[0]) && PX4_ISFINITE(setpoint.thrust[1]))) {
-					failsafe(setpoint, _states, true, !was_in_failsafe);
+					//failsafe(setpoint, _states, true, !was_in_failsafe);
 				}
 
 				// Check if altitude, climbrate or thrust in D-direction are valid -> trigger failsafe if none
 				// of these setpoints are valid
 				if (!PX4_ISFINITE(setpoint.position[2]) && !PX4_ISFINITE(setpoint.velocity[2]) && !PX4_ISFINITE(setpoint.thrust[2])) {
-					failsafe(setpoint, _states, true, !was_in_failsafe);
+					//failsafe(setpoint, _states, true, !was_in_failsafe);
 				}
 			}
 
@@ -682,7 +683,7 @@ MulticopterPositionControl::run()
 				}
 			}
 
-			if (_vehicle_land_detected.landed && !_in_smooth_takeoff && !PX4_ISFINITE(setpoint.thrust[2])) {
+			if (false && _vehicle_land_detected.landed && !_in_smooth_takeoff && !PX4_ISFINITE(setpoint.thrust[2])) {
 				// Keep throttle low when landed and NOT in smooth takeoff
 				reset_setpoint_to_nan(setpoint);
 				setpoint.thrust[0] = setpoint.thrust[1] = setpoint.thrust[2] = 0.0f;
@@ -725,7 +726,8 @@ MulticopterPositionControl::run()
 			local_pos_sp.velocity[2] = PX4_ISFINITE(_control.getVelSp()(2)) ? _control.getVelSp()(2) : setpoint.velocity[2];
 			local_pos_sp.yaw = _control.getYawSetpoint();
 			local_pos_sp.yawspeed = _control.getYawspeedSetpoint();
-
+			Vector3f(setpoint.acceleration).print();
+			_control.getAccelerationSetpoint().copyTo(local_pos_sp.acceleration);
 			_control.getThrustSetpoint().copyTo(local_pos_sp.thrust);
 
 			// Publish local position setpoint
@@ -745,7 +747,9 @@ MulticopterPositionControl::run()
 			}
 
 			// Fill attitude setpoint. Attitude is computed from yaw and thrust setpoint.
-			_att_sp = ControlMath::thrustToAttitude(matrix::Vector3f(local_pos_sp.thrust), local_pos_sp.yaw);
+			_att_sp = ControlMath::thrustToAttitude(Vector3f(local_pos_sp.thrust), local_pos_sp.yaw);
+			_att_sp = ControlMath::accelerationToAttitude(Vector3f(local_pos_sp.acceleration), local_pos_sp.yaw, _param_mpc_thr_hover.get());
+			Vector3f(local_pos_sp.acceleration).print();
 			_att_sp.yaw_sp_move_rate = _control.getYawspeedSetpoint();
 			_att_sp.fw_control_yaw = false;
 			_att_sp.apply_flaps = false;
@@ -913,6 +917,10 @@ MulticopterPositionControl::start_flight_task()
 
 		case 3:
 			error =  _flight_tasks.switchTask(FlightTaskIndex::ManualPositionSmoothVel);
+			break;
+
+		case 4:
+			error =  _flight_tasks.switchTask(FlightTaskIndex::ManualAcceleration);
 			break;
 
 		default:

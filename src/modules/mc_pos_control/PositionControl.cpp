@@ -217,7 +217,7 @@ void PositionControl::_positionController()
 	// P-position controller
 	const Vector3f vel_sp_position = (_pos_sp - _pos).emult(Vector3f(_param_mpc_xy_p.get(), _param_mpc_xy_p.get(),
 					 _param_mpc_z_p.get()));
-	_vel_sp = vel_sp_position + _vel_sp;
+	_vel_sp += vel_sp_position;
 
 	// Constrain horizontal velocity by prioritizing the velocity component along the
 	// the desired position setpoint over the feed-forward term.
@@ -260,6 +260,8 @@ void PositionControl::_velocityController(const float &dt)
 	// Consider thrust in D-direction.
 	float thrust_desired_D = _param_mpc_z_vel_p.get() * vel_err(2) +  _param_mpc_z_vel_d.get() * _vel_dot(2) + _thr_int(
 					 2) - _param_mpc_thr_hover.get();
+	_acc_sp(2) += _param_mpc_z_vel_p.get() * vel_err(2) +  _param_mpc_z_vel_d.get() * _vel_dot(2) + _thr_int(
+					 2) - _param_mpc_thr_hover.get();
 
 	// The Thrust limits are negated and swapped due to NED-frame.
 	float uMax = -_param_mpc_thr_min.get();
@@ -294,6 +296,9 @@ void PositionControl::_velocityController(const float &dt)
 		Vector2f thrust_desired_NE;
 		thrust_desired_NE(0) = _param_mpc_xy_vel_p.get() * vel_err(0) + _param_mpc_xy_vel_d.get() * _vel_dot(0) + _thr_int(0);
 		thrust_desired_NE(1) = _param_mpc_xy_vel_p.get() * vel_err(1) + _param_mpc_xy_vel_d.get() * _vel_dot(1) + _thr_int(1);
+
+		_acc_sp(0) += _param_mpc_xy_vel_p.get() * vel_err(0) + _param_mpc_xy_vel_d.get() * _vel_dot(0) + _thr_int(0);
+		_acc_sp(1) += _param_mpc_xy_vel_p.get() * vel_err(1) + _param_mpc_xy_vel_d.get() * _vel_dot(1) + _thr_int(1);
 
 		// Get maximum allowed thrust in NE based on tilt and excess thrust.
 		float thrust_max_NE_tilt = fabsf(_thr_sp(2)) * tanf(_constraints.tilt);
