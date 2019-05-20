@@ -214,7 +214,7 @@ void VtolType::check_quadchute_condition()
 				}
 
 			} else {
-				const bool height_error = _local_pos->z_valid && ((-_local_pos_sp->z - -_local_pos->z) > _params->fw_alt_err);
+				const bool height_error = _local_pos->z_valid && ((-_local_pos_sp->position[2] - -_local_pos->z) > _params->fw_alt_err);
 				const bool height_rate_error = _local_pos->v_z_valid && (_local_pos->vz > 1.0f) && (_local_pos->z_deriv > 1.0f);
 
 				if (height_error && height_rate_error) {

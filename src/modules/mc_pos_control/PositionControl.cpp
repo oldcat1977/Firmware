@@ -67,9 +67,9 @@ bool PositionControl::updateSetpoint(const vehicle_local_position_setpoint_s &se
 	// by default we use the entire position-velocity control-loop pipeline (flag only for logging purpose)
 	_setCtrlFlag(true);
 
-	_pos_sp = Vector3f(setpoint.x, setpoint.y, setpoint.z);
-	_vel_sp = Vector3f(setpoint.vx, setpoint.vy, setpoint.vz);
-	_acc_sp = Vector3f(setpoint.acc_x, setpoint.acc_y, setpoint.acc_z);
+	_pos_sp = Vector3f(setpoint.position);
+	_vel_sp = Vector3f(setpoint.velocity);
+	_acc_sp = Vector3f(setpoint.acceleration);
 	_thr_sp = Vector3f(setpoint.thrust);
 	_yaw_sp = setpoint.yaw;
 	_yawspeed_sp = setpoint.yawspeed;

@@ -188,7 +188,7 @@ bool MulticopterLandDetector::_get_ground_contact_state()
 	// if we have a valid velocity setpoint and the vehicle is demanded to go down but no vertical movement present,
 	// we then can assume that the vehicle hit ground
 	_in_descend = _is_climb_rate_enabled()
-		      && (_vehicleLocalPositionSetpoint.vz >= land_speed_threshold);
+		      && (_vehicleLocalPositionSetpoint.velocity[2] >= land_speed_threshold);
 	bool hit_ground = _in_descend && !verticalMovement;
 
 	// TODO: we need an accelerometer based check for vertical movement for flying without GPS
@@ -311,7 +311,7 @@ bool MulticopterLandDetector::_is_climb_rate_enabled()
 	bool has_updated = (_vehicleLocalPositionSetpoint.timestamp != 0)
 			   && (hrt_elapsed_time(&_vehicleLocalPositionSetpoint.timestamp) < 500_ms);
 
-	return (_control_mode.flag_control_climb_rate_enabled && has_updated && PX4_ISFINITE(_vehicleLocalPositionSetpoint.vz));
+	return (_control_mode.flag_control_climb_rate_enabled && has_updated && PX4_ISFINITE(_vehicleLocalPositionSetpoint.velocity[2]));
 }
 
 bool MulticopterLandDetector::_has_low_thrust()

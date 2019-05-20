@@ -458,8 +458,8 @@ MulticopterPositionControl::limit_altitude(vehicle_local_position_setpoint_s &se
 
 	if (_states.position(2) < min_z) {
 		// above maximum altitude, only allow downwards flight == positive vz-setpoints (NED)
-		setpoint.z = min_z;
-		setpoint.vz = math::max(setpoint.vz, 0.f);
+		setpoint.position[2] = min_z;
+		setpoint.velocity[2] = math::max(setpoint.velocity[2], 0.f);
 	}
 }
 
@@ -632,15 +632,15 @@ MulticopterPositionControl::run()
 				_failsafe_land_hysteresis.set_state_and_update(false);
 
 				// Check if position, velocity or thrust pairs are valid -> trigger failsaife if no pair is valid
-				if (!(PX4_ISFINITE(setpoint.x) && PX4_ISFINITE(setpoint.y)) &&
-				    !(PX4_ISFINITE(setpoint.vx) && PX4_ISFINITE(setpoint.vy)) &&
+				if (!(PX4_ISFINITE(setpoint.position[0]) && PX4_ISFINITE(setpoint.position[1])) &&
+				    !(PX4_ISFINITE(setpoint.velocity[0]) && PX4_ISFINITE(setpoint.velocity[1])) &&
 				    !(PX4_ISFINITE(setpoint.thrust[0]) && PX4_ISFINITE(setpoint.thrust[1]))) {
 					failsafe(setpoint, _states, true, !was_in_failsafe);
 				}
 
 				// Check if altitude, climbrate or thrust in D-direction are valid -> trigger failsafe if none
 				// of these setpoints are valid
-				if (!PX4_ISFINITE(setpoint.z) && !PX4_ISFINITE(setpoint.vz) && !PX4_ISFINITE(setpoint.thrust[2])) {
+				if (!PX4_ISFINITE(setpoint.position[2]) && !PX4_ISFINITE(setpoint.velocity[2]) && !PX4_ISFINITE(setpoint.thrust[2])) {
 					failsafe(setpoint, _states, true, !was_in_failsafe);
 				}
 			}
@@ -651,12 +651,12 @@ MulticopterPositionControl::run()
 			landing_gear_s gear = _flight_tasks.getGear();
 
 			// check if all local states are valid and map accordingly
-			set_vehicle_states(setpoint.vz);
+			set_vehicle_states(setpoint.velocity[2]);
 
 			// do smooth takeoff after delay if there's a valid vertical velocity or position
 			if (_spoolup_time_hysteresis.get_state() && PX4_ISFINITE(_states.position(2)) && PX4_ISFINITE(_states.velocity(2))) {
-				check_for_smooth_takeoff(setpoint.z, setpoint.vz, setpoint.jerk_z, constraints);
-				update_smooth_takeoff(setpoint.z, setpoint.vz);
+				check_for_smooth_takeoff(setpoint.position[2], setpoint.velocity[2], setpoint.jerk[2], constraints);
+				update_smooth_takeoff(setpoint.position[2], setpoint.velocity[2]);
 			}
 
 			// disable horizontal / yaw control during smooth takeoff and limit maximum speed upwards
@@ -719,14 +719,13 @@ MulticopterPositionControl::run()
 			// PositionController.
 			vehicle_local_position_setpoint_s local_pos_sp{};
 			local_pos_sp.timestamp = hrt_absolute_time();
-			local_pos_sp.x = setpoint.x;
-			local_pos_sp.y = setpoint.y;
-			local_pos_sp.z = setpoint.z;
+			Vector3f(setpoint.position).copyTo(local_pos_sp.position);
+			local_pos_sp.velocity[0] = PX4_ISFINITE(_control.getVelSp()(0)) ? _control.getVelSp()(0) : setpoint.velocity[0];
+			local_pos_sp.velocity[1] = PX4_ISFINITE(_control.getVelSp()(1)) ? _control.getVelSp()(1) : setpoint.velocity[1];
+			local_pos_sp.velocity[2] = PX4_ISFINITE(_control.getVelSp()(2)) ? _control.getVelSp()(2) : setpoint.velocity[2];
 			local_pos_sp.yaw = _control.getYawSetpoint();
 			local_pos_sp.yawspeed = _control.getYawspeedSetpoint();
-			local_pos_sp.vx = PX4_ISFINITE(_control.getVelSp()(0)) ? _control.getVelSp()(0) : setpoint.vx;
-			local_pos_sp.vy = PX4_ISFINITE(_control.getVelSp()(1)) ? _control.getVelSp()(1) : setpoint.vy;
-			local_pos_sp.vz = PX4_ISFINITE(_control.getVelSp()(2)) ? _control.getVelSp()(2) : setpoint.vz;
+
 			_control.getThrustSetpoint().copyTo(local_pos_sp.thrust);
 
 			// Publish local position setpoint
@@ -1081,7 +1080,7 @@ MulticopterPositionControl::failsafe(vehicle_local_position_setpoint_s &setpoint
 		if (PX4_ISFINITE(_states.velocity(2))) {
 			// We have a valid velocity in D-direction.
 			// descend downwards with landspeed.
-			setpoint.vz = _param_mpc_land_speed.get();
+			setpoint.velocity[2] = _param_mpc_land_speed.get();
 			setpoint.thrust[0] = setpoint.thrust[1] = 0.0f;
 			if (warn) {
 				PX4_WARN("Failsafe: Descend with land-speed.");
@@ -1100,11 +1099,13 @@ MulticopterPositionControl::failsafe(vehicle_local_position_setpoint_s &setpoint
 void
 MulticopterPositionControl::reset_setpoint_to_nan(vehicle_local_position_setpoint_s &setpoint)
 {
-	setpoint.x = setpoint.y = setpoint.z = NAN;
-	setpoint.vx = setpoint.vy = setpoint.vz = NAN;
+	Vector3f nan_vector;
+	nan_vector.setNaN();
+	nan_vector.copyTo(setpoint.position);
+	nan_vector.copyTo(setpoint.velocity);
+	nan_vector.copyTo(setpoint.acceleration);
+	nan_vector.copyTo(setpoint.thrust);
 	setpoint.yaw = setpoint.yawspeed = NAN;
-	setpoint.acc_x = setpoint.acc_y = setpoint.acc_z = NAN;
-	setpoint.thrust[0] = setpoint.thrust[1] = setpoint.thrust[2] = NAN;
 }
 
 void

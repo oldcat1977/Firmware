@@ -3153,14 +3153,14 @@ protected:
 
 				if (_lpos_sp_sub->update(&lpos_sp)) {
 					// velocity
-					msg.vx = lpos_sp.vx;
-					msg.vy = lpos_sp.vy;
-					msg.vz = lpos_sp.vz;
+					msg.vx = lpos_sp.velocity[0];
+					msg.vy = lpos_sp.velocity[1];
+					msg.vz = lpos_sp.velocity[2];
 
 					// acceleration
-					msg.afx = lpos_sp.acc_x;
-					msg.afy = lpos_sp.acc_y;
-					msg.afz = lpos_sp.acc_z;
+					msg.afx = lpos_sp.acceleration[0];
+					msg.afy = lpos_sp.acceleration[1];
+					msg.afz = lpos_sp.acceleration[2];
 
 					// yaw
 					msg.yaw = lpos_sp.yaw;
@@ -3234,17 +3234,17 @@ protected:
 
 			msg.time_boot_ms = pos_sp.timestamp / 1000;
 			msg.coordinate_frame = MAV_FRAME_LOCAL_NED;
-			msg.x = pos_sp.x;
-			msg.y = pos_sp.y;
-			msg.z = pos_sp.z;
+			msg.x = pos_sp.position[0];
+			msg.y = pos_sp.position[1];
+			msg.z = pos_sp.position[2];
 			msg.yaw = pos_sp.yaw;
 			msg.yaw_rate = pos_sp.yawspeed;
-			msg.vx = pos_sp.vx;
-			msg.vy = pos_sp.vy;
-			msg.vz = pos_sp.vz;
-			msg.afx = pos_sp.acc_x;
-			msg.afy = pos_sp.acc_y;
-			msg.afz = pos_sp.acc_z;
+			msg.vx = pos_sp.velocity[0];
+			msg.vy = pos_sp.velocity[1];
+			msg.vz = pos_sp.velocity[2];
+			msg.afx = pos_sp.acceleration[0];
+			msg.afy = pos_sp.acceleration[1];
+			msg.afz = pos_sp.acceleration[2];
 
 			mavlink_msg_position_target_local_ned_send_struct(_mavlink->get_channel(), &msg);
 
