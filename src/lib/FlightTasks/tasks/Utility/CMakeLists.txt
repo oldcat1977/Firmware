@@ -37,6 +37,7 @@ px4_add_library(FlightTaskUtility
 	ObstacleAvoidance.cpp
 	StraightLine.cpp
 	VelocitySmoothing.cpp
+	PositionLock.hpp
 )
 
 target_link_libraries(FlightTaskUtility PUBLIC FlightTask)
