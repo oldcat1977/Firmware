@@ -3338,7 +3338,6 @@ set_control_mode()
 				!offboard_control_mode.ignore_velocity ||
 				!offboard_control_mode.ignore_acceleration_force;
 
-		// TO-DO: Add support for other modes than yawrate control
 		control_mode.flag_control_yawrate_override_enabled =
 			offboard_control_mode.ignore_bodyrate_x &&
 			offboard_control_mode.ignore_bodyrate_y &&
