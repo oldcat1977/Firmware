@@ -1324,7 +1324,6 @@ MavlinkReceiver::handle_message_set_attitude_target(mavlink_message_t *msg)
 		if ((ignore_bodyrate_msg_x || ignore_bodyrate_msg_y ||
 		     ignore_bodyrate_msg_z) &&
 		    ignore_attitude_msg && !_offboard_control_mode.ignore_thrust) {
-			/* Message want's us to ignore everything except thrust: only ignore if previously ignored */
 			_offboard_control_mode.ignore_bodyrate_x =
 				ignore_bodyrate_msg_x && _offboard_control_mode.ignore_bodyrate_x;
 			_offboard_control_mode.ignore_bodyrate_y =
