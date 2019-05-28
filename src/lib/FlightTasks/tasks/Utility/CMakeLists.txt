@@ -40,5 +40,5 @@ px4_add_library(FlightTaskUtility
 	PositionLock.hpp
 )
 
-target_link_libraries(FlightTaskUtility PUBLIC FlightTask)
+target_link_libraries(FlightTaskUtility PUBLIC FlightTask SlewRate)
 target_include_directories(FlightTaskUtility PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
